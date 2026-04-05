@@ -53,6 +53,8 @@ pub struct Editor {
     redo_stack: Vec<UndoEntry>,
     on_change: Option<Box<dyn Fn(&str, &mut Window, &mut App)>>,
     theme: Theme,
+    font_family: SharedString,
+    font_size: Pixels,
     unit_table: UnitTable,
     currency_table: CurrencyTable,
     // Per-line layout cache (rebuilt each frame)
@@ -65,6 +67,8 @@ impl Editor {
     pub fn new(
         cx: &mut Context<Self>,
         theme: Theme,
+        font_family: String,
+        font_size: f32,
         on_change: Option<Box<dyn Fn(&str, &mut Window, &mut App)>>,
     ) -> Self {
         Editor {
@@ -78,6 +82,8 @@ impl Editor {
             redo_stack: Vec::new(),
             on_change,
             theme,
+            font_family: SharedString::from(font_family),
+            font_size: px(font_size),
             unit_table: UnitTable::new(),
             currency_table: CurrencyTable::new(),
             line_layouts: Vec::new(),
@@ -1003,6 +1009,10 @@ impl Render for Editor {
             .on_mouse_move(cx.listener(Self::on_mouse_move))
             .size_full()
             .bg(self.theme.editor_background)
+            .p(px(12.))
+            .font_family(self.font_family.clone())
+            .text_size(self.font_size)
+            .text_color(self.theme.text)
             .overflow_y_hidden()
             .children((0..line_count).map(|i| {
                 EditorLineElement {

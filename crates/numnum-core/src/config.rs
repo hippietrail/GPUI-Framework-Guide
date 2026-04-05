@@ -163,10 +163,11 @@ impl Settings {
             if let Some(eq_pos) = line.find('=') {
                 let key = line[..eq_pos].trim().to_string();
                 let mut val = line[eq_pos+1..].trim().to_string();
-                // Strip quotes first
-                let was_quoted = val.starts_with('"') && val.ends_with('"') && val.len() >= 2;
-                if was_quoted {
-                    val = val[1..val.len()-1].to_string();
+                // Extract quoted value: find opening and closing quotes
+                if val.starts_with('"') {
+                    if let Some(close_quote) = val[1..].find('"') {
+                        val = val[1..1 + close_quote].to_string();
+                    }
                 } else {
                     // Strip inline comments only for unquoted values
                     if let Some(comment_pos) = val.find(" #") {
@@ -340,10 +341,29 @@ font_size = 14
     }
 
     #[test]
+    fn test_quoted_values_with_inline_comments() {
+        let toml = r##"
+[theme]
+background = "#1e1e2e"   # base
+text = "#cdd6f4"   # text
+"##;
+        let s = Settings::parse(toml);
+        assert_eq!(s.theme.background.r, 0x1e);
+        assert_eq!(s.theme.background.g, 0x1e);
+        assert_eq!(s.theme.background.b, 0x2e);
+        assert_eq!(s.theme.text.r, 0xcd);
+        assert_eq!(s.theme.text.g, 0xd6);
+        assert_eq!(s.theme.text.b, 0xf4);
+    }
+
+    #[test]
     fn test_load_real_settings() {
-        // This test loads from the actual config file if it exists
         let s = Settings::load();
-        // Should at least not panic
         assert!(!s.theme.name.is_empty());
+        // If the real config exists, background should NOT be black
+        if settings_path().exists() {
+            assert!(s.theme.background.r > 0 || s.theme.background.g > 0 || s.theme.background.b > 0,
+                "Background color is black - settings parsing is broken");
+        }
     }
 }

@@ -4,7 +4,7 @@ mod results_pane;
 mod status_bar;
 mod theme;
 
-use gpui::{App, Bounds, Focusable, KeyBinding, WindowBounds, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, KeyBinding, WindowBounds, WindowOptions, prelude::*, px, size};
 use gpui_platform::application;
 use numnum_core::Settings;
 
@@ -47,7 +47,9 @@ fn main() {
         ]);
 
         let theme_clone = theme.clone();
-        let window_handle = cx
+        let font_family = settings.editor.font_family.clone();
+        let font_size = settings.editor.font_size;
+        let _window_handle = cx
             .open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
@@ -55,18 +57,10 @@ fn main() {
                     ..Default::default()
                 },
                 move |window, cx| {
-                    // Set font from settings
-                    window.set_rem_size(px(settings.editor.font_size));
-                    cx.new(|cx| NumNumApp::new(cx, theme_clone))
+                    window.set_rem_size(px(font_size));
+                    cx.new(|cx| NumNumApp::new(cx, theme_clone, font_family, font_size))
                 },
             )
-            .unwrap();
-
-        // Focus the editor after window is created
-        window_handle
-            .update(cx, |app, window, cx| {
-                window.focus(&app.editor.focus_handle(cx), cx);
-            })
-            .unwrap();
+            .expect("Failed to open window");
     });
 }

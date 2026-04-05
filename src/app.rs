@@ -1,4 +1,4 @@
-use gpui::{App, Context, Entity, Render, Window, div, prelude::*, px};
+use gpui::{App, Context, Entity, Render, SharedString, Window, div, prelude::*, px};
 use numnum_core::format::format_value;
 use numnum_core::{EvalContext, Value};
 
@@ -12,21 +12,26 @@ pub struct NumNumApp {
     results_pane: Entity<ResultsPane>,
     status_bar: Entity<StatusBar>,
     theme: Theme,
+    font_family: SharedString,
+    font_size: f32,
 }
 
 impl NumNumApp {
-    pub fn new(cx: &mut Context<Self>, theme: Theme) -> Self {
+    pub fn new(cx: &mut Context<Self>, theme: Theme, font_family: String, font_size: f32) -> Self {
         let results_pane = cx.new(|_| ResultsPane::new(theme.clone()));
         let status_bar = cx.new(|_| StatusBar::new(theme.clone()));
 
         let results_entity = results_pane.clone();
         let status_entity = status_bar.clone();
         let theme_clone = theme.clone();
+        let font_for_app = font_family.clone();
 
         let editor = cx.new(|cx| {
             Editor::new(
                 cx,
                 theme_clone,
+                font_family,
+                font_size,
                 Some(Box::new(move |content: &str, _window: &mut Window, cx: &mut App| {
                     // Evaluate all lines
                     let mut eval_ctx = EvalContext::new();
@@ -94,6 +99,8 @@ impl NumNumApp {
             results_pane,
             status_bar,
             theme,
+            font_family: SharedString::from(font_for_app),
+            font_size,
         }
     }
 }
@@ -106,6 +113,8 @@ impl Render for NumNumApp {
             .size_full()
             .bg(self.theme.background)
             .text_color(self.theme.text)
+            .font_family(self.font_family.clone())
+            .text_size(px(self.font_size))
             .child(
                 // Main content area: editor | divider | results
                 div()
@@ -135,6 +144,7 @@ impl Render for NumNumApp {
                             .w(px(200.))
                             .flex_shrink_0()
                             .overflow_hidden()
+                            .bg(self.theme.background)
                             .child(self.results_pane.clone()),
                     ),
             )
