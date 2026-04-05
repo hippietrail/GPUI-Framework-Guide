@@ -226,7 +226,10 @@ module.exports = grammar({
 
     identifier: $ => /[a-zA-Z_]\w*/,
 
-    unit_identifier: $ => /[a-zA-Z][\w.]*(\s+[a-zA-Z][\w.]*)*/,
+    // Single-word unit identifiers only. Multi-word units like "nautical mile"
+    // and "square meter" are handled as sequences by the conversion rule or
+    // by the editor's semantic highlighting (not tree-sitter's job).
+    unit_identifier: $ => /[a-zA-Z][\w.]*/,
 
     currency_symbol: $ => choice(
       "$", "\u20AC", "\u00A3", "\u00A5", "\u20BD", "\u20AA",

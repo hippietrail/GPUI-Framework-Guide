@@ -29,27 +29,25 @@
 (binary_expression operator: _ @operator)
 (compound_assignment operator: _ @operator)
 (inline_percent operator: _ @operator)
+"=" @operator
 
-;; Keywords (conversion, percent)
-["in" "to" "as" "into"] @keyword
-["of" "from" "on" "off"] @keyword
-["of what is" "on what is" "off what is"] @keyword
-["as a % of" "as a percent of"] @keyword
-["as a % on" "as a percent on"] @keyword
-["as a % off" "as a percent off"] @keyword
-["as a % increase of" "as a percent increase of"] @keyword
-["as a % decrease of" "as a percent decrease of"] @keyword
+;; Conversion keywords
+(conversion ["in" "to" "as" "into"] @keyword)
 
-;; Assignment keywords
-["=" "equal" "is"] @operator
+;; Percent keywords
+(percent_of ["of" "from"] @keyword)
+(percent_on "on" @keyword)
+(percent_off "off" @keyword)
+(reverse_percent ["of what is" "on what is" "off what is"] @keyword)
+(as_a_percent ["as a % of" "as a percent of"] @keyword)
+(as_a_percent ["as a % on" "as a percent on"] @keyword)
+(as_a_percent ["as a % off" "as a percent off"] @keyword)
+(as_a_percent ["as a % increase of" "as a percent increase of"] @keyword)
+(as_a_percent ["as a % decrease of" "as a percent decrease of"] @keyword)
 
 ;; Units
 (unit_identifier) @type
-(number_with_unit (unit_identifier) @type)
-(conversion target: (unit_identifier) @type)
-
-;; Repr keywords
-(repr_keyword) @keyword
+(conversion target: (repr_keyword) @keyword)
 
 ;; Currency
 (currency_symbol) @constant

@@ -1246,7 +1246,7 @@
     },
     "unit_identifier": {
       "type": "PATTERN",
-      "value": "[a-zA-Z][\\w.]*(\\s+[a-zA-Z][\\w.]*)*"
+      "value": "[a-zA-Z][\\w.]*"
     },
     "currency_symbol": {
       "type": "CHOICE",
