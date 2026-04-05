@@ -19,10 +19,19 @@ impl Parser {
 
         // Check for assignment: ident = expr  or  ident += expr
         if let Some(assign) = self.try_assignment() {
-            return Ok(assign);
+            return self.expect_eof(assign);
         }
 
-        self.parse_expr(0)
+        let expr = self.parse_expr(0)?;
+        self.expect_eof(expr)
+    }
+
+    /// Ensure there are no unconsumed tokens before Eof.
+    fn expect_eof(&self, expr: Expr) -> Result<Expr, String> {
+        if !matches!(self.peek(), TokenKind::Eof) {
+            return Err(format!("Unexpected token: {:?}", self.peek()));
+        }
+        Ok(expr)
     }
 
     fn try_aggregation(&mut self) -> Option<Expr> {

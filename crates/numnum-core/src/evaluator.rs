@@ -418,6 +418,38 @@ impl EvalContext {
             return Ok(Value::WithUnit(result, target_unit));
         }
 
+        // For add/sub with different currencies, convert RHS to LHS currency first
+        if matches!(op, BinOp::Add | BinOp::Sub)
+            && let (Value::WithCurrency(ln, lc), Value::WithCurrency(rn, rc)) = (&lhs, &rhs)
+            && lc != rc
+        {
+            let rn_converted = self.currency_table.convert(*rn, *rc, *lc)
+                .ok_or_else(|| EvalError::InvalidCurrency("Invalid currency id".to_string()))?;
+            let result = match op {
+                BinOp::Add => ln + rn_converted,
+                BinOp::Sub => ln - rn_converted,
+                _ => unreachable!(),
+            };
+            return Ok(Value::WithCurrency(result, *lc));
+        }
+
+        // For add/sub, reject incompatible types (unit + currency, different dimensions, etc.)
+        if matches!(op, BinOp::Add | BinOp::Sub) {
+            match (&lhs, &rhs) {
+                (Value::WithUnit(_, lu), Value::WithUnit(_, ru)) => {
+                    // Same-dimension case was handled above; if we get here, dimensions differ
+                    let lu_def = self.unit_table.get(*lu);
+                    let ru_def = self.unit_table.get(*ru);
+                    if let (Some(ld), Some(rd)) = (lu_def, ru_def) {
+                        if ld.dimension != rd.dimension {
+                            return Err(EvalError::IncompatibleUnits);
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+
         let ln = lhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Left operand must be numeric".to_string()))?;
         let rn = rhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Right operand must be numeric".to_string()))?;
 
@@ -1098,6 +1130,101 @@ $50 as a % of $200";
             }
             other => panic!("Line 26 ($50 as a % of $200): expected Percent, got {:?}", other),
         }
+    }
+
+    // === Bug fix regression tests ===
+
+    // Mixed currency arithmetic
+    #[test]
+    fn test_mixed_currency_subtraction() {
+        // 5 USD - 20 INR should NOT be -15
+        // It should convert 20 INR to USD first, then subtract
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("5 USD - 20 INR").unwrap();
+        let n = result.as_number().unwrap();
+        // 20 INR at ~83.5 rate = ~0.24 USD, so 5 - 0.24 ≈ 4.76
+        assert!(n > 4.0 && n < 5.0, "5 USD - 20 INR = {}, expected ~4.76", n);
+    }
+
+    #[test]
+    fn test_mixed_currency_addition() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("5 USD + 20 INR").unwrap();
+        let n = result.as_number().unwrap();
+        assert!(n > 5.0 && n < 6.0, "5 USD + 20 INR = {}, expected ~5.24", n);
+    }
+
+    // Unit floating point precision
+    #[test]
+    fn test_unit_subtraction_exact() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("24 inches - 2 feet").unwrap();
+        let n = result.as_number().unwrap();
+        assert!((n - 0.0).abs() < 0.01, "24 inches - 2 feet = {}, expected 0", n);
+    }
+
+    #[test]
+    fn test_feet_to_inches() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("2 feet in inches").unwrap();
+        let n = result.as_number().unwrap();
+        assert!((n - 24.0).abs() < 0.01, "2 feet in inches = {}, expected 24", n);
+    }
+
+    // Incompatible unit types should error
+    #[test]
+    fn test_incompatible_units_error() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("5 meters + 3 kg");
+        assert!(result.is_err(), "Adding meters + kg should fail");
+    }
+
+    #[test]
+    fn test_incompatible_unit_conversion_error() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("5 km in kg");
+        assert!(result.is_err(), "Converting km to kg should fail");
+    }
+
+    // Parser should reject trailing tokens
+    #[test]
+    fn test_trailing_paren_error() {
+        let ut = UnitTable::new();
+        let ct = CurrencyTable::new();
+        let mut lexer = crate::lexer::Lexer::new("5 + 3)", &ut, &ct);
+        let tokens = lexer.tokenize();
+        let mut parser = crate::parser::Parser::new(tokens);
+        let result = parser.parse();
+        assert!(result.is_err(), "Trailing ) should be a parse error");
+    }
+
+    #[test]
+    fn test_trailing_token_error() {
+        let ut = UnitTable::new();
+        let ct = CurrencyTable::new();
+        let mut lexer = crate::lexer::Lexer::new("5 + 3 7", &ut, &ct);
+        let tokens = lexer.tokenize();
+        let mut parser = crate::parser::Parser::new(tokens);
+        let result = parser.parse();
+        assert!(result.is_err(), "Trailing number should be a parse error");
+    }
+
+    // More mixed unit tests
+    #[test]
+    fn test_km_plus_miles() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("5 km + 3 miles").unwrap();
+        let n = result.as_number().unwrap();
+        // 3 miles ≈ 4.828 km, total ≈ 9.828 km (smaller-unit preference picks km)
+        assert!((n - 9.828).abs() < 0.01, "5 km + 3 miles = {}, expected ~9.828 km", n);
+    }
+
+    #[test]
+    fn test_hours_plus_minutes() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("1 hour + 30 minutes").unwrap();
+        let n = result.as_number().unwrap();
+        assert!((n - 90.0).abs() < 0.01, "1 hour + 30 minutes = {}, expected 90 (min)", n);
     }
 }
 /// Tests verified against reference calculator output.

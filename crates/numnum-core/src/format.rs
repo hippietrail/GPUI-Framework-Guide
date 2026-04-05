@@ -25,8 +25,8 @@ pub fn format_number(n: f64) -> String {
     if n.is_nan() { return "NaN".to_string(); }
     if n.is_infinite() { return if n > 0.0 { "Infinity" } else { "-Infinity" }.to_string(); }
 
-    // Normalize -0.0 to 0.0
-    let n = if n == 0.0 { 0.0 } else { n };
+    // Normalize -0.0 to 0.0, and round near-zero values (floating point drift) to exactly 0.0
+    let n = if n == 0.0 || n.abs() < 1e-10 { 0.0 } else { n };
 
     // Exact integers within safe i64 range
     if n == n.floor() && n.abs() < 1e15 {
