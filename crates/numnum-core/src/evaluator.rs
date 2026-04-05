@@ -392,45 +392,94 @@ impl EvalContext {
 
     // Fix #2: convert RHS to LHS unit BEFORE doing arithmetic
     fn eval_binary_op(&self, op: BinOp, lhs: Value, rhs: Value) -> Result<Value, EvalError> {
-        // For add/sub with same-dimension units, convert both to the smaller unit (smaller-unit preference)
-        if matches!(op, BinOp::Add | BinOp::Sub)
-            && let (Value::WithUnit(ln, lu), Value::WithUnit(rn, ru)) = (&lhs, &rhs)
-            && let (Some(lu_def), Some(ru_def)) = (self.unit_table.get(*lu), self.unit_table.get(*ru))
-            && lu_def.dimension == ru_def.dimension
-        {
-            // Pick the unit with the smaller to_base factor (= the smaller unit)
-            let (target_unit, ln_converted, rn_converted) = if lu_def.to_base <= ru_def.to_base {
-                // LHS unit is smaller or equal
-                let rn_conv = self.unit_table.convert(*rn, *ru, *lu)
-                    .ok_or(EvalError::IncompatibleUnits)?;
-                (*lu, *ln, rn_conv)
-            } else {
-                // RHS unit is smaller
-                let ln_conv = self.unit_table.convert(*ln, *lu, *ru)
-                    .ok_or(EvalError::IncompatibleUnits)?;
-                (*ru, ln_conv, *rn)
-            };
-            let result = match op {
-                BinOp::Add => ln_converted + rn_converted,
-                BinOp::Sub => ln_converted - rn_converted,
-                _ => unreachable!(),
-            };
-            return Ok(Value::WithUnit(result, target_unit));
+        // --- Same-dimension units: convert before arithmetic ---
+        if let (Value::WithUnit(ln, lu), Value::WithUnit(rn, ru)) = (&lhs, &rhs) {
+            if let (Some(lu_def), Some(ru_def)) = (self.unit_table.get(*lu), self.unit_table.get(*ru)) {
+                if lu_def.dimension == ru_def.dimension {
+                    if matches!(op, BinOp::Add | BinOp::Sub) {
+                        // For add/sub, pick the unit with the smaller to_base factor
+                        let (target_unit, ln_c, rn_c) = if lu_def.to_base <= ru_def.to_base {
+                            let rn_conv = self.unit_table.convert(*rn, *ru, *lu)
+                                .ok_or(EvalError::IncompatibleUnits)?;
+                            (*lu, *ln, rn_conv)
+                        } else {
+                            let ln_conv = self.unit_table.convert(*ln, *lu, *ru)
+                                .ok_or(EvalError::IncompatibleUnits)?;
+                            (*ru, ln_conv, *rn)
+                        };
+                        let result = match op {
+                            BinOp::Add => ln_c + rn_c,
+                            BinOp::Sub => ln_c - rn_c,
+                            _ => unreachable!(),
+                        };
+                        return Ok(Value::WithUnit(result, target_unit));
+                    }
+                    // For mul/div/mod/pow: convert RHS to LHS unit, compute, keep LHS unit
+                    // Exception: division of same-dimension units returns dimensionless
+                    let rn_converted = self.unit_table.convert(*rn, *ru, *lu)
+                        .ok_or(EvalError::IncompatibleUnits)?;
+                    let result = match op {
+                        BinOp::Mul => *ln * rn_converted,
+                        BinOp::Div => {
+                            if rn_converted == 0.0 { return Err(EvalError::DivisionByZero); }
+                            *ln / rn_converted
+                        }
+                        BinOp::Mod => {
+                            if rn_converted == 0.0 { return Err(EvalError::ModuloByZero); }
+                            *ln % rn_converted
+                        }
+                        BinOp::Pow => ln.powf(rn_converted),
+                        _ => {
+                            // Bitwise ops: fall through to generic path
+                            let ln_n = lhs.as_number().unwrap();
+                            let rn_n = rhs.as_number().unwrap();
+                            return self.eval_plain_op(op, ln_n, rn_n, &lhs, &rhs);
+                        }
+                    };
+                    // Division of same-dimension units => dimensionless
+                    if matches!(op, BinOp::Div) {
+                        return Ok(Value::Number(result));
+                    }
+                    return Ok(Value::WithUnit(result, *lu));
+                } else if matches!(op, BinOp::Add | BinOp::Sub) {
+                    // Different dimensions on add/sub => error
+                    return Err(EvalError::IncompatibleUnits);
+                }
+            }
         }
 
-        // For add/sub with different currencies, convert RHS to LHS currency first
-        if matches!(op, BinOp::Add | BinOp::Sub)
-            && let (Value::WithCurrency(ln, lc), Value::WithCurrency(rn, rc)) = (&lhs, &rhs)
-            && lc != rc
-        {
-            let rn_converted = self.currency_table.convert(*rn, *rc, *lc)
-                .ok_or_else(|| EvalError::InvalidCurrency("Invalid currency id".to_string()))?;
-            let result = match op {
-                BinOp::Add => ln + rn_converted,
-                BinOp::Sub => ln - rn_converted,
-                _ => unreachable!(),
-            };
-            return Ok(Value::WithCurrency(result, *lc));
+        // --- Different currencies: convert RHS to LHS currency before arithmetic ---
+        if let (Value::WithCurrency(ln, lc), Value::WithCurrency(rn, rc)) = (&lhs, &rhs) {
+            if lc != rc {
+                let rn_converted = self.currency_table.convert(*rn, *rc, *lc)
+                    .ok_or_else(|| EvalError::InvalidCurrency("Invalid currency id".to_string()))?;
+                let result = match op {
+                    BinOp::Add => *ln + rn_converted,
+                    BinOp::Sub => *ln - rn_converted,
+                    BinOp::Mul => *ln * rn_converted,
+                    BinOp::Div => {
+                        if rn_converted == 0.0 { return Err(EvalError::DivisionByZero); }
+                        *ln / rn_converted
+                    }
+                    BinOp::Mod => {
+                        if rn_converted == 0.0 { return Err(EvalError::ModuloByZero); }
+                        *ln % rn_converted
+                    }
+                    BinOp::Pow => ln.powf(rn_converted),
+                    _ => {
+                        // Bitwise ops: fall through to generic path
+                        let ln_n = lhs.as_number().unwrap();
+                        let rn_n = rhs.as_number().unwrap();
+                        return self.eval_plain_op(op, ln_n, rn_n, &lhs, &rhs);
+                    }
+                };
+                return Ok(Value::WithCurrency(result, *lc));
+            }
+            // Same currency division => dimensionless
+            if matches!(op, BinOp::Div) {
+                if *rn == 0.0 { return Err(EvalError::DivisionByZero); }
+                return Ok(Value::Number(*ln / *rn));
+            }
         }
 
         // For add/sub, reject incompatible types (unit + currency, different dimensions, etc.)
@@ -453,6 +502,12 @@ impl EvalContext {
         let ln = lhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Left operand must be numeric".to_string()))?;
         let rn = rhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Right operand must be numeric".to_string()))?;
 
+        self.eval_plain_op(op, ln, rn, &lhs, &rhs)
+    }
+
+    /// Execute the arithmetic/bitwise operation on plain f64 values and propagate
+    /// unit/currency/repr from the original operands.
+    fn eval_plain_op(&self, op: BinOp, ln: f64, rn: f64, lhs: &Value, rhs: &Value) -> Result<Value, EvalError> {
         let result = match op {
             BinOp::Add => ln + rn,
             BinOp::Sub => ln - rn,
@@ -488,13 +543,13 @@ impl EvalContext {
         // Propagate number repr for bitwise operations
         if matches!(op, BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor | BinOp::Shl | BinOp::Shr) {
             // If LHS has a repr (hex/bin/oct), output in that repr
-            if let Value::NumberRepr(_, repr) = &lhs {
+            if let Value::NumberRepr(_, repr) = lhs {
                 return Ok(Value::NumberRepr(result, *repr));
             }
         }
 
         // Propagate units/currency from either side
-        match (&lhs, &rhs) {
+        match (lhs, rhs) {
             (Value::WithUnit(_, u), _) if matches!(op, BinOp::Add | BinOp::Sub) => {
                 Ok(Value::WithUnit(result, *u))
             }
@@ -1260,6 +1315,104 @@ $50 as a % of $200";
         let mut ctx2 = EvalContext::new();
         let r2 = ctx2.eval_line(&formatted);
         assert!(r2.is_ok(), "Could not re-parse AED result: {}", formatted);
+    }
+
+    // === Bug fix: mixed currency mul/div should convert first ===
+
+    #[test]
+    fn test_mixed_currency_multiplication() {
+        // 90 USD * 1863.65 INR: convert INR to USD first, then multiply
+        // INR rate_to_usd = 83.5, so 1863.65 INR = 1863.65 * 1.0 / 83.5 ≈ 22.32 USD
+        // result = 90 * 22.32 ≈ 2008.86 USD
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("90 USD * 1863.65 INR").unwrap();
+        let n = result.as_number().unwrap();
+        // Should NOT be 90 * 1863.65 = 167728.5 (the old buggy behavior)
+        assert!(n < 10000.0, "Mixed currency mul should convert first, got {}", n);
+        // Expected: 90 * (1863.65 / 83.5) ≈ 90 * 22.32 ≈ 2008.86
+        assert!((n - 2008.86).abs() < 1.0, "90 USD * 1863.65 INR ≈ 2008.86, got {}", n);
+    }
+
+    #[test]
+    fn test_mixed_currency_division() {
+        // 90 USD / 1863.65 INR: convert INR to USD first, then divide
+        // 1863.65 INR ≈ 22.32 USD, so 90 / 22.32 ≈ 4.03
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("90 USD / 1863.65 INR").unwrap();
+        let n = result.as_number().unwrap();
+        // Should NOT be 90 / 1863.65 ≈ 0.048 (the old buggy behavior)
+        assert!(n > 1.0, "Mixed currency div should convert first, got {}", n);
+        assert!((n - 4.03).abs() < 0.1, "90 USD / 1863.65 INR ≈ 4.03, got {}", n);
+    }
+
+    #[test]
+    fn test_same_currency_division_dimensionless() {
+        // 90 USD / 45 USD should be dimensionless 2.0
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("90 USD / 45 USD").unwrap();
+        match result {
+            Value::Number(n) => assert!((n - 2.0).abs() < 1e-10, "90 USD / 45 USD = {}, expected 2", n),
+            other => panic!("Expected dimensionless Number, got {:?}", other),
+        }
+    }
+
+    // === Bug fix: mixed unit mul/div should convert first ===
+
+    #[test]
+    fn test_mixed_unit_multiplication() {
+        // 5 km * 3 miles: convert miles to km first (3 miles ≈ 4.828 km), then 5 * 4.828 ≈ 24.14
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("5 km * 3 miles").unwrap();
+        let n = result.as_number().unwrap();
+        assert!((n - 24.14).abs() < 0.1, "5 km * 3 miles ≈ 24.14 km, got {}", n);
+    }
+
+    #[test]
+    fn test_mixed_unit_division() {
+        // 10 km / 5 miles: convert miles to km first (5 miles ≈ 8.047 km), then 10 / 8.047 ≈ 1.243
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("10 km / 5 miles").unwrap();
+        // Division of same-dimension units returns dimensionless
+        match result {
+            Value::Number(n) => assert!((n - 1.243).abs() < 0.01, "10 km / 5 miles ≈ 1.243, got {}", n),
+            other => panic!("Expected dimensionless Number, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_same_unit_division_dimensionless() {
+        // 10 km / 5 km = 2.0 dimensionless
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("10 km / 5 km").unwrap();
+        match result {
+            Value::Number(n) => assert!((n - 2.0).abs() < 1e-10, "10 km / 5 km = {}, expected 2", n),
+            other => panic!("Expected dimensionless Number, got {:?}", other),
+        }
+    }
+
+    // === Bug fix: prev and sum in document context ===
+
+    #[test]
+    fn test_prev_in_document() {
+        let results = evaluate_document("100\nprev * 2");
+        assert!(results[1].1.is_ok());
+        let n = results[1].1.as_ref().unwrap().as_number().unwrap();
+        assert!((n - 200.0).abs() < 0.01, "prev * 2 after 100 should be 200, got {}", n);
+    }
+
+    #[test]
+    fn test_sum_in_document() {
+        let results = evaluate_document("10\n20\n30\nsum");
+        let n = results[3].1.as_ref().unwrap().as_number().unwrap();
+        assert!((n - 60.0).abs() < 0.01, "sum of 10+20+30 should be 60, got {}", n);
+    }
+
+    #[test]
+    fn test_aggregation_window_reset_in_document() {
+        let results = evaluate_document("10\n20\n\n5\nsum");
+        // Blank line resets window, so sum = 5
+        let n = results[4].1.as_ref().unwrap().as_number().unwrap();
+        assert!((n - 5.0).abs() < 0.01, "sum after blank reset should be 5, got {}", n);
     }
 }
 /// Tests verified against reference calculator output.
