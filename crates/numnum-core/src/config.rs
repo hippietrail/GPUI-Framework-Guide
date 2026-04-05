@@ -211,7 +211,7 @@ impl Settings {
                 result: get_color("theme", "result", "#a6e3a1"),
                 error: get_color("theme", "error", "#f38ba8"),
                 syntax: SyntaxColors {
-                    number: get_color("theme.syntax", "number", "#fab387"),
+                    number: get_color("theme.syntax", "number", "#cdd6f4"),
                     operator: get_color("theme.syntax", "operator", "#89dceb"),
                     keyword: get_color("theme.syntax", "keyword", "#cba6f7"),
                     function: get_color("theme.syntax", "function", "#89b4fa"),
@@ -259,7 +259,7 @@ impl Default for Settings {
                 result: Color::from_hex("#a6e3a1"),
                 error: Color::from_hex("#f38ba8"),
                 syntax: SyntaxColors {
-                    number: Color::from_hex("#fab387"),
+                    number: Color::from_hex("#cdd6f4"),
                     operator: Color::from_hex("#89dceb"),
                     keyword: Color::from_hex("#cba6f7"),
                     function: Color::from_hex("#89b4fa"),
