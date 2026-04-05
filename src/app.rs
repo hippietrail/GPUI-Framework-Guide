@@ -170,53 +170,48 @@ impl Render for NumNumApp {
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_divider_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_divider_up))
             .child(
-                // Scrollable main content area
+                // Main content area: editor | divider | results
                 div()
-                    .id("scroll-container")
+                    .id("main-content")
+                    .flex()
+                    .flex_row()
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
                     .child(
-                        // Horizontal layout: editor | divider | results
+                        // Editor pane
                         div()
+                            .flex_1()
+                            .min_w_0()
+                            .child(self.editor.clone()),
+                    )
+                    .child(
+                        // Divider — visible on hover only
+                        div()
+                            .id("split-divider")
+                            .group("divider")
+                            .w(px(14.))
+                            .flex_shrink_0()
                             .flex()
-                            .flex_row()
-                            .w_full()
+                            .justify_center()
+                            .cursor(CursorStyle::ResizeLeftRight)
+                            .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
                             .child(
-                                // Editor pane
                                 div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .child(self.editor.clone()),
-                            )
-                            .child(
-                                // Divider — visible on hover only
-                                div()
-                                    .id("split-divider")
-                                    .group("divider")
-                                    .w(px(14.))
-                                    .flex_shrink_0()
-                                    .flex()
-                                    .justify_center()
-                                    .cursor(CursorStyle::ResizeLeftRight)
-                                    .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
-                                    .child(
-                                        div()
-                                            .w(px(5.))
-                                            .h_full()
-                                            .rounded_sm()
-                                            .when(is_dragging, |el| el.bg(divider_color))
-                                            .group_hover("divider", |style| style.bg(divider_color)),
-                                    ),
-                            )
-                            .child(
-                                // Results pane
-                                div()
-                                    .w(px((1.0 - self.split_ratio) * 900.0))
-                                    .flex_shrink_0()
-                                    .bg(self.theme.background)
-                                    .child(self.results_pane.clone()),
+                                    .w(px(5.))
+                                    .h_full()
+                                    .rounded_sm()
+                                    .when(is_dragging, |el| el.bg(divider_color))
+                                    .group_hover("divider", |style| style.bg(divider_color)),
                             ),
+                    )
+                    .child(
+                        // Results pane
+                        div()
+                            .w(px((1.0 - self.split_ratio) * 900.0))
+                            .flex_shrink_0()
+                            .bg(self.theme.background)
+                            .child(self.results_pane.clone()),
                     ),
             )
             .child(self.status_bar.clone())

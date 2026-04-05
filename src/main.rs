@@ -5,7 +5,7 @@ mod results_pane;
 mod status_bar;
 mod theme;
 
-use gpui::{App, Bounds, KeyBinding, WindowBounds, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, Focusable, KeyBinding, WindowBounds, WindowOptions, prelude::*, px, size};
 use gpui_platform::application;
 use numnum_core::Settings;
 
@@ -68,5 +68,12 @@ fn main() {
                 },
             )
             .expect("Failed to open window");
+
+        // Focus the editor on startup
+        _window_handle
+            .update(cx, |app, window, cx| {
+                window.focus(&app.editor.focus_handle(cx), cx);
+            })
+            .ok();
     });
 }
