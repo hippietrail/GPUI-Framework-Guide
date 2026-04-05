@@ -536,7 +536,8 @@ impl Editor {
             }
             TokenKind::Func(_) => self.theme.syn_function,
             TokenKind::Unit(_) => self.theme.syn_unit,
-            TokenKind::Currency(_) | TokenKind::CurrencySymbol(_) => self.theme.syn_currency,
+            TokenKind::Currency(_) => self.theme.syn_currency,
+            TokenKind::CurrencySymbol(_) => self.theme.text, // $ € £ etc blend with numbers
             TokenKind::Scale(_) => self.theme.syn_scale,
             TokenKind::Repr(_) => self.theme.syn_keyword,
             TokenKind::Ident(_) => self.theme.syn_variable,
