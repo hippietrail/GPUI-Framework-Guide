@@ -47,6 +47,7 @@ impl NumNumApp {
         // Create scroll handle shared between observer and render
         let scroll_handle = ScrollHandle::new();
         let scroll_handle_for_eval = scroll_handle.clone();
+        let last_scroll_line = std::cell::Cell::new(0usize);
 
         // Observe editor for content changes: evaluate, update results + diagnostics
         let results_for_eval = results_pane.clone();
@@ -117,22 +118,23 @@ impl NumNumApp {
                 bar.set_cursor(line, col, cx);
             });
 
-            // Auto-scroll to keep cursor visible
-            // Approximate line height from font size * line_height_multiplier
-            let approx_line_height = px(font_size * 1.6);
-            let cursor_y = approx_line_height * (line as f32);
-            let current_offset = scroll_handle_for_eval.offset();
-            let viewport_top = -current_offset.y; // offset is negative when scrolled down
-            let viewport_bottom = viewport_top + px(580.0); // approximate viewport height
+            // Auto-scroll to keep cursor visible, but only when cursor line changes
+            if line != last_scroll_line.get() {
+                last_scroll_line.set(line);
+                let approx_line_height = px(font_size * 1.6);
+                let cursor_y = approx_line_height * (line as f32);
+                let current_offset = scroll_handle_for_eval.offset();
+                let viewport_top = -current_offset.y;
+                let viewport_height = px(580.0);
+                let viewport_bottom = viewport_top + viewport_height;
 
-            if cursor_y > viewport_bottom - approx_line_height * 2.0 {
-                // Cursor is below viewport, scroll down
-                let new_y = -(cursor_y - px(500.0));
-                scroll_handle_for_eval.set_offset(point(px(0.), new_y));
-            } else if cursor_y < viewport_top {
-                // Cursor is above viewport, scroll up
-                let new_y = -cursor_y;
-                scroll_handle_for_eval.set_offset(point(px(0.), new_y));
+                if cursor_y + approx_line_height > viewport_bottom {
+                    let new_y = -(cursor_y - viewport_height + approx_line_height * 3.0);
+                    scroll_handle_for_eval.set_offset(point(px(0.), new_y));
+                } else if cursor_y < viewport_top {
+                    let new_y = -cursor_y + approx_line_height;
+                    scroll_handle_for_eval.set_offset(point(px(0.), new_y));
+                }
             }
         })
         .detach();
