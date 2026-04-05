@@ -1,8 +1,11 @@
+use std::collections::HashMap;
+
 use gpui::{App, Context, Entity, Render, SharedString, Window, div, prelude::*, px};
 use numnum_core::format::format_value;
 use numnum_core::{EvalContext, Value};
 
 use crate::editor::Editor;
+use crate::rates;
 use crate::results_pane::{LineResult, ResultsPane};
 use crate::status_bar::StatusBar;
 use crate::theme::Theme;
@@ -17,7 +20,13 @@ pub struct NumNumApp {
 }
 
 impl NumNumApp {
-    pub fn new(cx: &mut Context<Self>, theme: Theme, font_family: String, font_size: f32) -> Self {
+    pub fn new(
+        cx: &mut Context<Self>,
+        theme: Theme,
+        font_family: String,
+        font_size: f32,
+        live_rates: HashMap<String, f64>,
+    ) -> Self {
         let results_pane = cx.new(|_| ResultsPane::new(theme.clone()));
         let status_bar = cx.new(|_| StatusBar::new(theme.clone()));
 
@@ -35,6 +44,7 @@ impl NumNumApp {
                 Some(Box::new(move |content: &str, _window: &mut Window, cx: &mut App| {
                     // Evaluate all lines
                     let mut eval_ctx = EvalContext::new();
+                    rates::apply_rates(&mut eval_ctx.currency_table, &live_rates);
                     let mut results = Vec::new();
                     let mut running_total = Value::None;
 

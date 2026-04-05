@@ -402,6 +402,19 @@ impl CurrencyTable {
         let to_rate = self.get(to)?.rate_to_usd;
         Some(value * to_rate / from_rate)
     }
+
+    /// Update the rate for a currency identified by its ISO code.
+    /// If the code exists, its `rate_to_usd` is updated and `true` is returned.
+    /// If the code is not found, returns `false` (no new currency is inserted).
+    pub fn update_rate(&mut self, code: &str, rate_to_usd: f64) -> bool {
+        if let Some(&id) = self.name_to_id.get(&code.to_lowercase()) {
+            if let Some(def) = self.currencies.get_mut(id.0 as usize) {
+                def.rate_to_usd = rate_to_usd;
+                return true;
+            }
+        }
+        false
+    }
 }
 
 /// How a number was originally entered — affects display format.

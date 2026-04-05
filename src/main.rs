@@ -1,5 +1,6 @@
 mod app;
 mod editor;
+mod rates;
 mod results_pane;
 mod status_bar;
 mod theme;
@@ -15,6 +16,9 @@ use crate::theme::Theme;
 fn main() {
     let settings = Settings::load();
     let theme = Theme::from_settings(&settings);
+
+    // Load currency rates (network fetch + SQLite cache, fallback to hardcoded)
+    let live_rates = rates::RateCache::new().get_rates();
 
     application().run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(900.0), px(640.0)), cx);
@@ -49,6 +53,7 @@ fn main() {
         let theme_clone = theme.clone();
         let font_family = settings.editor.font_family.clone();
         let font_size = settings.editor.font_size;
+        let rates_clone = live_rates.clone();
         let _window_handle = cx
             .open_window(
                 WindowOptions {
@@ -58,7 +63,7 @@ fn main() {
                 },
                 move |window, cx| {
                     window.set_rem_size(px(font_size));
-                    cx.new(|cx| NumNumApp::new(cx, theme_clone, font_family, font_size))
+                    cx.new(|cx| NumNumApp::new(cx, theme_clone, font_family, font_size, rates_clone))
                 },
             )
             .expect("Failed to open window");
