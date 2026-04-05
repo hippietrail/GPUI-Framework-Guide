@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use gpui::{Context, Entity, Render, SharedString, Window, div, prelude::*, px};
+use gpui::{
+    Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
+    MouseUpEvent, Render, SharedString, Window, div, prelude::*, px,
+};
 use numnum_core::format::{format_value, format_value_full_precision};
 use numnum_core::{EvalContext, Value};
 
@@ -17,6 +20,8 @@ pub struct NumNumApp {
     theme: Theme,
     font_family: SharedString,
     font_size: f32,
+    split_ratio: f32, // 0.0-1.0, fraction of width for editor
+    is_dragging_divider: bool,
 }
 
 impl NumNumApp {
@@ -110,12 +115,43 @@ impl NumNumApp {
             theme,
             font_family: SharedString::from(font_for_app),
             font_size,
+            split_ratio: 0.7,
+            is_dragging_divider: false,
+        }
+    }
+}
+
+impl NumNumApp {
+    fn on_divider_down(&mut self, _: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        self.is_dragging_divider = true;
+        cx.notify();
+    }
+
+    fn on_divider_up(&mut self, _: &MouseUpEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        self.is_dragging_divider = false;
+        cx.notify();
+    }
+
+    fn on_divider_move(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {
+        if self.is_dragging_divider {
+            let bounds = window.bounds();
+            let window_width: f32 = bounds.size.width.into();
+            if window_width > 0.0 {
+                let mouse_x: f32 = event.position.x.into();
+                let origin_x: f32 = bounds.origin.x.into();
+                let ratio = (mouse_x - origin_x) / window_width;
+                self.split_ratio = ratio.clamp(0.3, 0.85);
+                cx.notify();
+            }
         }
     }
 }
 
 impl Render for NumNumApp {
-    fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let divider_color = self.theme.divider;
+        let is_dragging = self.is_dragging_divider;
+
         div()
             .flex()
             .flex_col()
@@ -124,15 +160,19 @@ impl Render for NumNumApp {
             .text_color(self.theme.text)
             .font_family(self.font_family.clone())
             .text_size(px(self.font_size))
+            .on_mouse_move(cx.listener(Self::on_divider_move))
+            .on_mouse_up(MouseButton::Left, cx.listener(Self::on_divider_up))
+            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_divider_up))
             .child(
                 // Main content area: editor | divider | results
                 div()
+                    .id("main-content")
                     .flex()
                     .flex_row()
                     .flex_1()
                     .min_h_0()
                     .child(
-                        // Editor pane
+                        // Editor pane — uses percentage width from split_ratio
                         div()
                             .flex_1()
                             .min_w_0()
@@ -140,30 +180,33 @@ impl Render for NumNumApp {
                             .child(self.editor.clone()),
                     )
                     .child(
-                        // Divider
+                        // Divider — invisible until hovered, draggable
                         div()
-                            .w(px(1.))
+                            .id("split-divider")
+                            .w(px(6.))
                             .h_full()
-                            .bg(self.theme.divider)
-                            .flex_shrink_0(),
+                            .flex_shrink_0()
+                            .cursor(CursorStyle::ResizeLeftRight)
+                            .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
+                            .child(
+                                // Thin visible line inside the wider hit target
+                                div()
+                                    .w(px(1.))
+                                    .h_full()
+                                    .mx_auto()
+                                    .when(is_dragging, |el| el.bg(divider_color))
+                                    .hover(|style| style.bg(divider_color)),
+                            ),
                     )
                     .child(
                         // Results pane
                         div()
-                            .w(px(200.))
+                            .w(px((1.0 - self.split_ratio) * 900.0))
                             .flex_shrink_0()
                             .overflow_hidden()
                             .bg(self.theme.background)
                             .child(self.results_pane.clone()),
                     ),
-            )
-            .child(
-                // Divider above status bar
-                div()
-                    .w_full()
-                    .h(px(1.))
-                    .bg(self.theme.divider)
-                    .flex_shrink_0(),
             )
             .child(self.status_bar.clone())
     }

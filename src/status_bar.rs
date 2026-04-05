@@ -39,7 +39,7 @@ impl Render for StatusBar {
             .w_full()
             .h(px(28.))
             .flex_shrink_0()
-            .bg(self.theme.status_bar)
+            .bg(self.theme.background)
             .px(px(12.))
             .items_center()
             .justify_between()
