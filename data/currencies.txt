@@ -1,0 +1,184 @@
+# numnum Currency Registry
+# Unit and currency data for numnum calculator
+#
+# Format: CODE | display_format | variant1, variant2, ...
+# In display_format, %@ is the number placeholder
+#
+# Some variant strings are truncated due to binary extraction limits.
+# These are marked with ... and should be verified against the GUI app.
+
+AED | %@ Dh          | United Arab Emirates dirham, Dirham, Dirhams, UAE Dirham, UAE Dirhams, Dhs
+AFN | %@ Af          | Afgani, Afgan Afgani, Afs
+ALL | %@ L           | Lek, Albanian Lek, Albanian Leks
+AMD | %@ ...         | Armenian Dram, Dram, Drams, Armenian Drams
+ANG | ...            | Netherlands Antillean Guilders, Netherlands Antillean Guilder, Guilder, Guilders
+AOA | %@ Kz          | Angolan Kwanzas, Angolan Kwanza, Kwanza, Kwanzas, Kz
+ARS | %@ ARS         | Argentine Peso, Argentine Pesos
+AUD | $%@ AUD        | Australian Dollars, Australian Dollar
+AWG | %@ Afl.        | Aruban florin, florin, Afl.
+AZN | %@ man.        | Azerbaijani Manats, Azerbaijani Manat, Manat, Manats, man.
+BAM | %@ KM          | Bosnia and Herzegovina convertible mark, Bosnia and Herzegovina convertible marks, convertible mark, convertible marks, Maraka
+BBD | %@ BBD         | Barbados Dollars, Barbados Dollar
+BDT | %@ Tk          | Bangladeshi Takas, Bangladeshi Taka, Takas, Taka, Tk
+BGN | %@ ...         | Bulgarian Levs, Bulgarian Lev, Lev, Leva, Bulgarian Leva
+BHD | %@ BD          | Bahraini Dinars, Bahraini Dinar
+BIF | %@ FBu         | Burundi Francs, Burundi Franc, Burundian franc, Burundian francs, FBu
+BMD | $ %@           | Bermudian Dollars, Bermudian Dollar, BD$
+BND | B$ %@          | Brunei Dollars, Brunei Dollar
+BOB | Bs %@          | Bolivian Bolivianos, Bolivian Boliviano, Bolivianos, Boliviano, Bs
+BRL | R$ %@          | Brazilian Reals, Brazilian Real, R$
+BSD | B$ %@          | Bahamian Dollars, Bahamian Dollar
+BTC | %@ ...         | Bitcoins, Bitcoin
+BTN | Nu. %@         | Bhutanese Ngultrum, Ngultrum, Bhutanese Ngultrums, Ngultrums, Nu.
+BWP | %@ BWP         | Botswana Pula, Pula
+BYN | %@ BYN         | Belarusian ruble, Belarusian rubles, bel. ruble, bel rubles
+BYR | %@ BYR         | BYR
+BZD | BZ$ %@         | Belize Dollars, Belize Dollar, BZ$
+CAD | $%@ CAD        | Canadian Dollars, Canadian Dollar, CA$, $ CAD, $CAD
+CDF | %@ FC          | Congolese Francs, Congolese Franc, FC
+CHF | %@ SFr.        | Swiss Francs, Swiss Franc, SFr.
+CLP | %@ CLP         | Chilean Pesos, Chilean Peso
+CNY | %@ ...         | Chinese Yuans, Chinese Yuan, yuan, yuans
+COP | $%@ COP        | Colombian Pesos, Colombian Peso
+CRC | %@ ...         | Costa Rican Colones, Costa Rican Colon, Colon, Colones
+CUP | $MN %@         | Cuban Pesos, Cuban Peso, $MN
+CVE | %@ CVE         | Cape Verdean Escudos, Cape Verdean Escudo, Escudos, Escudo, Esc
+CZK | %@ ...         | Czech Korunas, Czech Koruna
+DJF | %@ Fdj         | Djibouti Francs, Djibouti Franc, Djiboutian Francs, Djiboutian Franc, Fdj
+DKK | %@ kr.         | Danish Kroner, Danish Krone, kr.
+DOP | RD$ %@         | Dominican Pesos, Dominican Peso, RD$
+DZD | %@ DA          | Algerian Dinars, Algerian Dinar
+EGP | ...            | Egyptian Pounds, Egyptian Pound
+ERN | %@ Nfk         | Eritrean nakfa, Nakfa, Nfk
+ETB | %@ Br          | Ethiopian Birr, Birr
+ETH | ...            | Ethereum, Ether, ETH
+EUR | ...            | Euro
+FJD | FJ$ %@         | Fiji Dollars, Fiji Dollar, Fijian Dollars, Fijian Dollar, FJ$
+FKP | ...            | Falkland Islands Pounds, Falkland Islands Pound, Falkland Pounds
+GBP | ...            | Pound sterling, Pounds sterling
+GEL | %@ lari        | Lari, Georgian Lari
+GHS | ...            | Ghana Cedi, Cedi
+GIP | %@ GIP         | Gibraltar Pounds, Gibraltar Pound
+GMD | %@ D           | Gambian Dalasi, Dalasi, Gambian Dalasis, Dalasis
+GNF | %@ FG          | Guinean franc, Guinean francs
+GTQ | %@ Q           | Guatemalan Quetzales, Guatemalan quetzal, Quetzal, Quetzales
+GYD | G$ %@          | Guyanese dollar, Guyanese dollars, G$
+HKD | HK$ %@         | Hong Kong Dollar, Hong Kong Dollars, HK$
+HNL | L %@           | Honduran Lempira, Honduran Lempiras, Lempira, Lempiras
+HRK | %@ Kn          | Croatian Kuna, Kuna
+HTG | %@ G           | Haitian Gourdes, Haitian Gourde, Gourdes, Gourde
+HUF | %@ Ft          | Hungarian Forint, Forint
+IDR | Rp %@          | Indonesian Rupiah, Rp
+ILS | %@ NIS         | Israeli new shekel, new shekalim, new sheqalim
+INR | INR %@         | Indian Rupee
+IQD | %@ IQD         | Iraqi Dinars, Iraqi Dinar
+IRR | %@ IR          | Iranian Rial, Iranian Rials, IR
+ISK | %@ kr          | Icelandic krona, Icelandic kronas, Iceland Krona, Iceland Kronas
+JMD | %@ JMD         | Jamaican Dollar, Jamaican Dollars
+JOD | %@ JD          | Jordanian Dinars, Jordanian Dinar
+JPY | ...            | Japanese Yen, Yen
+KES | %@ KSh         | Kenyan Shillings, Kenyan Shilling, KSh
+KGS | %@ ...         | Kyrgyzstani Soms, Kyrgyzstani Som, Soms, Som
+KHR | %@ R.          | Cambodian Riel, Riel
+KMF | %@ FC          | Comorian Francs, Comorian Franc, FC
+KPW | ...            | North Korean won
+KRW | ...            | South Korean Won, Won
+KWD | %@ KD          | Kuwaiti Dinars, Kuwaiti Dinar
+KYD | $ %@           | Cayman Islands Dollars, Cayman Islands Dollar
+KZT | %@ T           | Kazakhstani Tenge, Tenge
+LAK | %@ K           | Lao Kips, Lao Kip, Kips, Kip
+LBP | %@ ...         | Lebanese Pound, Lebanese Pounds
+LKR | Rs %@          | Sri Lanka Rupee
+LRD | L$ %@          | Liberian Dollars, Liberian Dollar, L$
+LSL | M %@           | Lesotho maloti, Lesotho loti, loti, Maloti
+LTL | %@ Lt          | Lithuanian Litas, Lithuanian Litai, Litas, Litai, Lt
+LVL | %@ Ls          | Latvian Lats, Lat, Latvian Lati, Lati, Latvian Latu, Latu, Ls
+LYD | %@ LD          | Libyan Dinar, Libyan Dinars
+MAD | %@ Dh          | Moroccan Dirham, Moroccan Dirhams
+MDL | %@ lei         | Moldovan Leu, Moldovan Lei, Leu
+MGA | Ar %@          | Malagasy ariary, ariary
+MKD | %@ den.        | Macedonian Denar, Macedonian Denari, den.
+MMK | K %@           | Myanmar Kyat, Burmese kyat, kyat
+MNT | %@ ...         | Mongolian Tugrik, Tugrik
+MOP | MOP$ %@        | Macanese Pataca, Macao Pataca, Macau Pataca, Pataca, Macanese Patacas, Patacas, Macao Patacas, MOP$
+MRO | %@ UM          | Mauritanian ouguiya, ouguiya
+MUR | Rs %@          | Mauritius Rupee, Mauritius Rupees
+MVR | Rf %@          | Maldivian Rufiyaa, Rufiyaa, Rf
+MWK | %@ MK          | Malawian Kwacha, Kwacha
+MXN | $ %@           | Mexican Peso, Mexican Pesos
+MYR | RM %@          | Malaysian Ringgit, Ringgit
+MZN | %@ MT          | Mozambican Metical, Mozambican Meticais, Metical, Meticais
+NAD | N$ %@          | Namibian Dollar, Namibian Dollars, N$
+NGN | %@ ...         | Nigerian Naira, Naira
+NIO | C$ %@          | Nicaraguan Cordoba, Cordoba, Cordobas, Nicaraguan Cordobas, C$
+NOK | %@ kr          | Norwegian Krone, Norwegian Kroner
+NPR | ...            | Nepalese Rupee, Nepalese Rupees
+NZD | $%@ NZD        | New Zealand Dollar, New Zealand Dollars
+OMR | %@ RO          | Omani Rial, Omani Rials
+PAB | %@ B/.         | Panamanian Balboa, Balboa, Panamanian Balboas, Balboas, B/.
+PEN | %@ S/.         | Peruvian Nuevo Sol, Nuevo Sol, Peruvian Nuevo Soles, Nuevo Soles, S/.
+PGK | %@ K           | Papua New Guinean Kina, Kina
+PHP | %@ ...         | Philippine Peso, Philippine Pesos
+PKR | Rs %@          | Pakistan Rupee, Pakistan Rupees
+PLN | %@ ...         | Polish Zloty, Zloty
+PYG | %@ ...         | Paraguayan Guarani, Guarani, Paraguayan Guaranies, Guaranies
+QAR | %@ QR          | Qatari Rial, Qatari Rials
+RON | %@ lei         | Romanian Lei, Romanian Leu
+RSD | %@ RSD         | Serbian Dinar, Serbian Dinars
+RUB | %@ ...         | russian rouble, russian roubles, ru rouble, ru roubles, rus roubles, rus rouble, russian ruble, russian rubles, rouble, ruble, rubles, roubles
+RWF | %@ RF          | Rwandan franc, Rwandan francs
+SAR | %@ SR          | Saudi Riyal, Saudi Riyals
+SBD | SI$ %@         | Solomon Islands Dollar, Solomon Islands Dollars, SI$
+SCR | %@ SR          | Seychelles Rupees, Seychelles Rupee, Seychellois Rupees, Seychellois Rupee
+SDG | %@ ...         | Sudanese Pound, Sudanese Pounds
+SEK | %@ kr          | Swedish Krona, Swedish Kronor
+SGD | S$ %@          | Singapore Dollar, Singapore Dollars, S$
+SHP | ...            | St Helena Pounds, St Helena Pound, Saint Helena pound, Saint Helena pounds
+SLL | %@ Le          | Sierra Leonean Leone, Sierra Leonean Leones, Leone, Leones
+SOS | %@ So.         | Somali Shillings, Somali Shilling, Sh., So.
+SRD | $ %@           | Surinamese Dollar, Surinamese Dollars
+SSP | %@ SSP         | South Sudanese pound, South Sudanese pounds
+STD | %@ Db          | ...
+SVC | %@ ...         | El Salvador Colon, Salvadoran colon, Salvadoran colones
+SYP | ...            | Syrian Pound, Syrian Pounds
+SZL | E %@           | Swazi Lilangeni, Lilangeni, Swazi Emalangeni, Emalangeni
+THB | ...            | Thai Baht, Baht
+TJS | %@ TJS         | Tajikistani Somoni, Somoni
+TMT | %@ TMT         | Turkmenistan Manat, Manat
+TND | %@ TD          | Tunisian Dinar, Tunisian Dinars
+TOP | T$ %@          | Tongan Pa...
+TRY | ...            | Turkish Lira
+TTD | TT$ %@         | Trinidad and Tobago Dollar, Trinidad and Tobago Dollars, TT$
+TWD | NT$ %@         | New Taiwan Dollars, New Taiwan Dollar, NT$, NT Dollar, NTD
+TZS | %@ TSh         | Tanzanian Shilling, Tanzanian Shillings, Tanzanian Shillingi, TSh
+UAH | %@ UAH         | Ukrainian Hryvnia, Ukrainian Hryvni, Ukrainian Hryven', Hryvnia, Hryvni, Hryven'
+UGX | %@ USh         | Ugandan Shilling, Ugandan Shillings, USh
+USD | $%@            | dollar USA, dollars USA, dollar, USD, dollars, U.S. Dollars, U.S. Dollar, USA Dollars, USA Dollar, $
+UYU | $U %@          | Uruguayan Peso, Uruguayan Pesos, $U
+UZS | %@ som         | Uzbekistani som, som, so'm
+VEF | Bs.F. %@       | Venezuelan Bol...
+VND | %@ ...         | Vietnamese Dong, Dong
+VUV | %@ VT          | Vanuatu Vatu, Vatu
+WST | WS$ %@         | Samoan Tala, Tala, WS$
+XAF | %@ FCFA        | CFA Franc (Beac), Central African CFA franc, Central African CFA francs, CFA francs, CFA franc, Franc CFA BEAC, FCFA
+XCD | EC$ %@         | East Caribbean Dollar, East Caribbean Dollars, EC$
+XOF | %@ CFA         | West African CFA franc, franc CFA BCEAO, CFA
+XPF | %@ F           | CFP Franc, CFP Francs, franc pacifique, francs pacifique
+YER | %@ YER         | Yemeni Rial, Yemeni Rials
+ZAR | R %@           | South African Rand, Rand
+ZMW | %@ ZMK         | Zambian Kwacha, Kwacha, ZMK
+
+# Currency symbols (prefix or suffix position)
+# $  → USD (also AUD, CAD, NZD etc with qualifiers)
+# €  → EUR
+# £  → GBP
+# ¥  → JPY / CNY
+# ₽  → RUB
+# ₪  → ILS
+# ₹  → INR
+# ₩  → KRW
+# ₴  → UAH
+# ₿  → BTC
+# ₺  → TRY
+# ฿  → THB
+# zł → PLN
