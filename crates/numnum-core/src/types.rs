@@ -358,7 +358,7 @@ impl CurrencyTable {
         self.add("GBP", "\u{00A3} %@", 0.76, &["pound sterling", "pounds sterling",
             "british pound", "british pounds"]);
         self.add("JPY", "\u{00A5} %@", 149.5, &["yen", "japanese yen"]);
-        self.add("CHF", "%@ SFr.", 0.88, &["swiss franc", "swiss francs"]);
+        self.add("CHF", "%@ SFr.", 0.88, &["swiss franc", "swiss francs", "sfr.", "sfr"]);
         self.add("CAD", "$%@ CAD", 1.36, &["canadian dollar", "canadian dollars"]);
         self.add("AUD", "$%@ AUD", 1.53, &["australian dollar", "australian dollars"]);
         self.add("CNY", "%@ \u{00A5}", 7.24, &["yuan", "yuans", "chinese yuan"]);
@@ -366,7 +366,7 @@ impl CurrencyTable {
         self.add("KRW", "\u{20A9} %@", 1330.0, &["won", "south korean won"]);
         self.add("RUB", "%@ \u{20BD}", 92.0, &["ruble", "rubles", "rouble", "roubles",
             "russian ruble", "russian rubles"]);
-        self.add("BRL", "R$ %@", 5.0, &["brazilian real", "brazilian reals"]);
+        self.add("BRL", "R$ %@", 5.0, &["brazilian real", "brazilian reals", "r$"]);
         self.add("MXN", "$ %@", 17.2, &["mexican peso", "mexican pesos"]);
         self.add("SEK", "%@ kr", 10.5, &["swedish krona", "swedish kronor"]);
         self.add("NOK", "%@ kr", 10.6, &["norwegian krone", "norwegian kroner"]);
@@ -375,13 +375,13 @@ impl CurrencyTable {
         self.add("CZK", "%@ K\u{010D}", 23.0, &["czech koruna", "czech korunas"]);
         self.add("HUF", "%@ Ft", 360.0, &["forint", "hungarian forint"]);
         self.add("TRY", "\u{20BA}%@", 27.0, &["turkish lira"]);
-        self.add("SGD", "S$ %@", 1.35, &["singapore dollar", "singapore dollars"]);
-        self.add("HKD", "HK$ %@", 7.82, &["hong kong dollar", "hong kong dollars"]);
+        self.add("SGD", "S$ %@", 1.35, &["singapore dollar", "singapore dollars", "s$"]);
+        self.add("HKD", "HK$ %@", 7.82, &["hong kong dollar", "hong kong dollars", "hk$"]);
         self.add("THB", "\u{0E3F} %@", 35.5, &["baht", "thai baht"]);
         self.add("ZAR", "R %@", 18.5, &["rand", "south african rand"]);
-        self.add("AED", "%@ Dh", 3.67, &["dirham", "dirhams", "uae dirham"]);
-        self.add("SAR", "%@ SR", 3.75, &["saudi riyal", "saudi riyals"]);
-        self.add("ILS", "%@ NIS", 3.7, &["shekel", "new shekel", "israeli new shekel"]);
+        self.add("AED", "%@ Dh", 3.67, &["dirham", "dirhams", "uae dirham", "dh"]);
+        self.add("SAR", "%@ SR", 3.75, &["saudi riyal", "saudi riyals", "sr"]);
+        self.add("ILS", "%@ NIS", 3.7, &["shekel", "new shekel", "israeli new shekel", "nis"]);
         self.add("UAH", "%@ UAH", 37.5, &["hryvnia", "ukrainian hryvnia"]);
         self.add("NZD", "$%@ NZD", 1.63, &["new zealand dollar", "new zealand dollars"]);
         // Crypto

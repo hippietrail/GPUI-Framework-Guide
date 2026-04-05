@@ -355,7 +355,14 @@ impl<'a> Lexer<'a> {
             return Token { kind: TokenKind::Unit(id), span: start..self.pos };
         }
 
-        // Currency lookup
+        // Currency lookup (try compound symbol with trailing '$' first: R$, HK$, S$)
+        if self.pos < self.input().len() && self.input().as_bytes()[self.pos] == b'$' {
+            let compound = format!("{}$", lower);
+            if let Some(id) = self.currency_table.lookup(&compound) {
+                self.pos += 1; // consume the '$'
+                return Token { kind: TokenKind::CurrencySymbol(id), span: start..self.pos };
+            }
+        }
         if let Some(id) = self.currency_table.lookup(&lower) {
             return Token { kind: TokenKind::Currency(id), span: start..self.pos };
         }

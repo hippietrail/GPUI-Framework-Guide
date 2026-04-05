@@ -1226,6 +1226,41 @@ $50 as a % of $200";
         let n = result.as_number().unwrap();
         assert!((n - 90.0).abs() < 0.01, "1 hour + 30 minutes = {}, expected 90 (min)", n);
     }
+
+    // === Currency code prefix and display shorthand tests ===
+
+    #[test]
+    fn test_currency_code_prefix() {
+        // INR 50 should work like 50 INR
+        let mut ctx = EvalContext::new();
+        let r = ctx.eval_line("INR 50").unwrap();
+        assert!(matches!(r, Value::WithCurrency(n, _) if (n - 50.0).abs() < 0.01));
+    }
+
+    #[test]
+    fn test_currency_shorthand_dh() {
+        let mut ctx = EvalContext::new();
+        let r = ctx.eval_line("100 Dh in USD").unwrap();
+        assert!(r.as_number().is_some());
+    }
+
+    #[test]
+    fn test_currency_shorthand_sfr() {
+        let mut ctx = EvalContext::new();
+        let r = ctx.eval_line("50 SFr. in USD").unwrap();
+        assert!(r.as_number().is_some());
+    }
+
+    #[test]
+    fn test_currency_roundtrip_aed() {
+        let mut ctx = EvalContext::new();
+        let r = ctx.eval_line("50 USD in AED").unwrap();
+        let formatted = format_value(&r, &ctx.unit_table, &ctx.currency_table);
+        // formatted is like "183.5 Dh" — should be re-parseable
+        let mut ctx2 = EvalContext::new();
+        let r2 = ctx2.eval_line(&formatted);
+        assert!(r2.is_ok(), "Could not re-parse AED result: {}", formatted);
+    }
 }
 /// Tests verified against reference calculator output.
 /// These are the 129 cases where the reference and numnum agree,

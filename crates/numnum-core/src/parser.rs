@@ -157,6 +157,21 @@ impl Parser {
                 let expr = self.parse_expr(19)?; // high bp, just grab a number
                 Ok(Expr::WithCurrency { expr: Box::new(expr), currency: id })
             }
+            TokenKind::Currency(id) => {
+                // Currency code in prefix position: "INR 50", "USD 100"
+                // Peek ahead: if next token is a number, treat as prefix currency
+                if matches!(self.tokens.get(self.pos + 1).map(|t| &t.kind),
+                    Some(TokenKind::Number(_)) | Some(TokenKind::NumberRepr(_, _)))
+                {
+                    self.advance();
+                    let expr = self.parse_expr(19)?;
+                    Ok(Expr::WithCurrency { expr: Box::new(expr), currency: id })
+                } else {
+                    // Not followed by a number — error
+                    self.advance();
+                    Err("Unexpected currency code without number".to_string())
+                }
+            }
             TokenKind::Ident(ref name) => {
                 let name = name.clone();
                 self.advance();
