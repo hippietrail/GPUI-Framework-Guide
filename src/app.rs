@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use gpui::{Context, Entity, Render, SharedString, Window, div, prelude::*, px};
-use numnum_core::format::format_value;
+use numnum_core::format::{format_value, format_value_full_precision};
 use numnum_core::{EvalContext, Value};
 
 use crate::editor::Editor;
@@ -61,6 +61,10 @@ impl NumNumApp {
                         let formatted = format_value(
                             &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
                         );
+                        // Full precision for clipboard copy
+                        let full_precision = format_value_full_precision(
+                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
+                        );
                         if let Some(n) = val.as_number() {
                             match &running_total {
                                 Value::None => running_total = Value::Number(n),
@@ -68,7 +72,7 @@ impl NumNumApp {
                                 _ => running_total = Value::Number(n),
                             }
                         }
-                        results.push(LineResult::Value(formatted));
+                        results.push(LineResult::Value(formatted, full_precision));
                         diagnostics.push(None);
                     }
                     Err(e) => {

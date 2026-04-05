@@ -7,7 +7,8 @@ use crate::theme::Theme;
 #[derive(Clone, Debug)]
 pub enum LineResult {
     None,
-    Value(String),
+    /// display_text, full_precision_copy_text
+    Value(String, String),
     Error(String),
 }
 
@@ -55,13 +56,13 @@ impl Render for ResultsPane {
             .children({
                 let mut children: Vec<gpui::AnyElement> = Vec::new();
                 for (i, result) in results.into_iter().enumerate() {
-                    let (text, color) = match &result {
-                        LineResult::None => (String::new(), theme.text_dimmed),
-                        LineResult::Value(s) => (s.clone(), theme.result),
-                        LineResult::Error(s) => (s.clone(), theme.error),
+                    let (text, copy_text, color) = match &result {
+                        LineResult::None => (String::new(), String::new(), theme.text_dimmed),
+                        LineResult::Value(display, full) => (display.clone(), full.clone(), theme.result),
+                        LineResult::Error(s) => (s.clone(), String::new(), theme.error),
                     };
 
-                    let text_for_copy = text.clone();
+                    let text_for_copy = copy_text;
                     children.push(
                         div()
                             .h(line_height)

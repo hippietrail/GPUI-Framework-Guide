@@ -1,5 +1,37 @@
 use crate::types::*;
 
+/// Full precision format for clipboard copy. Shows all significant digits.
+pub fn format_value_full_precision(value: &Value, unit_table: &UnitTable, currency_table: &CurrencyTable) -> String {
+    let format_full = |n: f64| -> String {
+        if n.is_nan() || n.is_infinite() { return format_number(n); }
+        if n == 0.0 { return "0".to_string(); }
+        if n == n.floor() && n.abs() < 1e15 { return format!("{}", n as i64); }
+        // Show full precision, trim trailing zeros
+        let s = format!("{}", n);
+        s.trim_end_matches('0').trim_end_matches('.').to_string()
+    };
+    match value {
+        Value::Number(n) => format_full(*n),
+        Value::NumberRepr(n, repr) => format_number_repr(*n, *repr),
+        Value::WithUnit(n, id) => {
+            match unit_table.get(*id) {
+                Some(unit) => format!("{} {}", format_full(*n), unit.display),
+                None => format_full(*n),
+            }
+        }
+        Value::WithCurrency(n, id) => {
+            match currency_table.get(*id) {
+                Some(currency) => format_currency(*n, &currency.display_format).replace(
+                    &format_number(*n), &format_full(*n)
+                ),
+                None => format_full(*n),
+            }
+        }
+        Value::Percent(n) => format!("{} %", format_full(*n * 100.0)),
+        Value::None => String::new(),
+    }
+}
+
 pub fn format_value(value: &Value, unit_table: &UnitTable, currency_table: &CurrencyTable) -> String {
     match value {
         Value::Number(n) => format_number(*n),
