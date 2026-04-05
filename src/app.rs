@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use gpui::{
     Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Render, SharedString, Window, div, prelude::*, px,
+    MouseUpEvent, Render, ScrollHandle, SharedString, Window, div, point, prelude::*, px,
 };
 use numnum_core::format::{format_value, format_value_full_precision};
 use numnum_core::{EvalContext, Value};
@@ -22,6 +22,7 @@ pub struct NumNumApp {
     font_size: f32,
     split_ratio: f32, // 0.0-1.0, fraction of width for editor
     is_dragging_divider: bool,
+    scroll_handle: ScrollHandle,
 }
 
 impl NumNumApp {
@@ -42,6 +43,10 @@ impl NumNumApp {
         let editor = cx.new(|cx| {
             Editor::new(cx, theme_clone, font_family, font_size, None)
         });
+
+        // Create scroll handle shared between observer and render
+        let scroll_handle = ScrollHandle::new();
+        let scroll_handle_for_eval = scroll_handle.clone();
 
         // Observe editor for content changes: evaluate, update results + diagnostics
         let results_for_eval = results_pane.clone();
@@ -111,6 +116,24 @@ impl NumNumApp {
                 bar.set_running_total(total_str.clone(), cx);
                 bar.set_cursor(line, col, cx);
             });
+
+            // Auto-scroll to keep cursor visible
+            // Approximate line height from font size * line_height_multiplier
+            let approx_line_height = px(font_size * 1.6);
+            let cursor_y = approx_line_height * (line as f32);
+            let current_offset = scroll_handle_for_eval.offset();
+            let viewport_top = -current_offset.y; // offset is negative when scrolled down
+            let viewport_bottom = viewport_top + px(580.0); // approximate viewport height
+
+            if cursor_y > viewport_bottom - approx_line_height * 2.0 {
+                // Cursor is below viewport, scroll down
+                let new_y = -(cursor_y - px(500.0));
+                scroll_handle_for_eval.set_offset(point(px(0.), new_y));
+            } else if cursor_y < viewport_top {
+                // Cursor is above viewport, scroll up
+                let new_y = -cursor_y;
+                scroll_handle_for_eval.set_offset(point(px(0.), new_y));
+            }
         })
         .detach();
 
@@ -123,6 +146,7 @@ impl NumNumApp {
             font_size,
             split_ratio: 0.7,
             is_dragging_divider: false,
+            scroll_handle,
         }
     }
 }
@@ -184,6 +208,7 @@ impl Render for NumNumApp {
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
+                    .track_scroll(&self.scroll_handle)
                     .child(
                         // Fixed-height content (taller than viewport to enable scroll)
                         div()
