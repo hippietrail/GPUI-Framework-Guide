@@ -352,41 +352,93 @@ impl CurrencyTable {
 
     fn build(&mut self) {
         // Static rates (snapshot -- live rates would come from API)
+        // Rate = how many units of this currency per 1 USD
+
+        // --- Major world currencies ---
         self.add("USD", "$%@", 1.0, &["dollar", "dollars", "dollar usa", "dollars usa",
-            "u.s. dollar", "u.s. dollars", "usa dollar", "usa dollars"]);
-        self.add("EUR", "\u{20AC} %@", 0.87, &["euro", "euros"]);
+            "u.s. dollar", "u.s. dollars", "usa dollar", "usa dollars",
+            "usd", "bucks"]);
+        self.add("EUR", "\u{20AC} %@", 0.87, &["euro", "euros", "eur"]);
         self.add("GBP", "\u{00A3} %@", 0.76, &["pound sterling", "pounds sterling",
-            "british pound", "british pounds"]);
-        self.add("JPY", "\u{00A5} %@", 149.5, &["yen", "japanese yen"]);
-        self.add("CHF", "%@ SFr.", 0.88, &["swiss franc", "swiss francs", "sfr.", "sfr"]);
-        self.add("CAD", "$%@ CAD", 1.36, &["canadian dollar", "canadian dollars"]);
-        self.add("AUD", "$%@ AUD", 1.53, &["australian dollar", "australian dollars"]);
-        self.add("CNY", "%@ \u{00A5}", 7.24, &["yuan", "yuans", "chinese yuan"]);
-        self.add("INR", "INR %@", 83.5, &["indian rupee", "rupee"]);
-        self.add("KRW", "\u{20A9} %@", 1330.0, &["won", "south korean won"]);
+            "british pound", "british pounds", "gbp", "quid"]);
+        self.add("JPY", "\u{00A5} %@", 149.5, &["yen", "japanese yen", "jpy"]);
+        self.add("CHF", "%@ SFr.", 0.88, &["swiss franc", "swiss francs", "sfr.", "sfr",
+            "chf", "franc", "francs"]);
+        self.add("CAD", "$%@ CAD", 1.36, &["canadian dollar", "canadian dollars", "cad"]);
+        self.add("AUD", "$%@ AUD", 1.53, &["australian dollar", "australian dollars", "aud"]);
+        self.add("CNY", "%@ \u{00A5}", 7.24, &["yuan", "yuans", "chinese yuan",
+            "rmb", "renminbi", "cny"]);
+        self.add("INR", "\u{20B9} %@", 83.5, &["indian rupee", "rupee", "rupees",
+            "inr", "rs", "\u{20B9}"]);
+        self.add("KRW", "\u{20A9} %@", 1330.0, &["won", "south korean won", "krw"]);
         self.add("RUB", "%@ \u{20BD}", 92.0, &["ruble", "rubles", "rouble", "roubles",
-            "russian ruble", "russian rubles"]);
-        self.add("BRL", "R$ %@", 5.0, &["brazilian real", "brazilian reals", "r$"]);
-        self.add("MXN", "$ %@", 17.2, &["mexican peso", "mexican pesos"]);
-        self.add("SEK", "%@ kr", 10.5, &["swedish krona", "swedish kronor"]);
-        self.add("NOK", "%@ kr", 10.6, &["norwegian krone", "norwegian kroner"]);
-        self.add("DKK", "%@ kr.", 6.9, &["danish krone", "danish kroner"]);
-        self.add("PLN", "%@ z\u{0142}", 4.0, &["zloty", "polish zloty"]);
-        self.add("CZK", "%@ K\u{010D}", 23.0, &["czech koruna", "czech korunas"]);
-        self.add("HUF", "%@ Ft", 360.0, &["forint", "hungarian forint"]);
-        self.add("TRY", "\u{20BA}%@", 27.0, &["turkish lira"]);
-        self.add("SGD", "S$ %@", 1.35, &["singapore dollar", "singapore dollars", "s$"]);
-        self.add("HKD", "HK$ %@", 7.82, &["hong kong dollar", "hong kong dollars", "hk$"]);
-        self.add("THB", "\u{0E3F} %@", 35.5, &["baht", "thai baht"]);
-        self.add("ZAR", "R %@", 18.5, &["rand", "south african rand"]);
-        self.add("AED", "%@ Dh", 3.67, &["dirham", "dirhams", "uae dirham", "dh"]);
-        self.add("SAR", "%@ SR", 3.75, &["saudi riyal", "saudi riyals", "sr"]);
-        self.add("ILS", "%@ NIS", 3.7, &["shekel", "new shekel", "israeli new shekel", "nis"]);
-        self.add("UAH", "%@ UAH", 37.5, &["hryvnia", "ukrainian hryvnia"]);
-        self.add("NZD", "$%@ NZD", 1.63, &["new zealand dollar", "new zealand dollars"]);
-        // Crypto
-        self.add("BTC", "%@ BTC", 0.000015, &["bitcoin", "bitcoins"]);
-        self.add("ETH", "%@ ETH", 0.00049, &["ethereum", "ether"]);
+            "russian ruble", "russian rubles", "rub"]);
+        self.add("BRL", "R$ %@", 5.0, &["brazilian real", "brazilian reals", "r$",
+            "brl", "real", "reais"]);
+        self.add("MXN", "$ %@", 17.2, &["mexican peso", "mexican pesos", "mxn"]);
+        self.add("SEK", "%@ kr", 10.5, &["swedish krona", "swedish kronor", "sek"]);
+        self.add("NOK", "%@ kr", 10.6, &["norwegian krone", "norwegian kroner", "nok"]);
+        self.add("DKK", "%@ kr.", 6.9, &["danish krone", "danish kroner", "dkk"]);
+        self.add("PLN", "%@ z\u{0142}", 4.0, &["zloty", "polish zloty", "pln"]);
+        self.add("CZK", "%@ K\u{010D}", 23.0, &["czech koruna", "czech korunas", "czk"]);
+        self.add("HUF", "%@ Ft", 360.0, &["forint", "hungarian forint", "huf"]);
+        self.add("TRY", "\u{20BA}%@", 27.0, &["turkish lira", "lira"]);
+        self.add("SGD", "S$ %@", 1.35, &["singapore dollar", "singapore dollars", "s$", "sgd"]);
+        self.add("HKD", "HK$ %@", 7.82, &["hong kong dollar", "hong kong dollars", "hk$", "hkd"]);
+        self.add("THB", "\u{0E3F} %@", 35.5, &["baht", "thai baht", "thb"]);
+        self.add("ZAR", "R %@", 18.5, &["rand", "south african rand", "zar"]);
+        self.add("AED", "%@ Dh", 3.67, &["dirham", "dirhams", "uae dirham", "dh", "aed"]);
+        self.add("SAR", "%@ SR", 3.75, &["saudi riyal", "saudi riyals", "sr", "sar"]);
+        self.add("ILS", "%@ NIS", 3.7, &["shekel", "new shekel", "israeli new shekel", "nis", "ils"]);
+        self.add("UAH", "%@ UAH", 37.5, &["hryvnia", "ukrainian hryvnia", "uah"]);
+        self.add("NZD", "$%@ NZD", 1.63, &["new zealand dollar", "new zealand dollars", "nzd"]);
+
+        // --- South Asia ---
+        self.add("PKR", "\u{20A8} %@", 278.0, &["pakistani rupee", "pakistani rupees", "pkr", "\u{20A8}"]);
+        self.add("BDT", "\u{09F3} %@", 110.0, &["bangladeshi taka", "taka", "takas", "bdt", "tk", "\u{09F3}"]);
+        self.add("LKR", "Rs %@", 325.0, &["sri lankan rupee", "sri lankan rupees", "lkr"]);
+        self.add("NPR", "Rs %@", 133.0, &["nepalese rupee", "nepalese rupees", "npr"]);
+
+        // --- Southeast Asia ---
+        self.add("PHP", "\u{20B1} %@", 56.0, &["philippine peso", "philippine pesos", "php", "\u{20B1}"]);
+        self.add("IDR", "Rp %@", 15800.0, &["indonesian rupiah", "rupiah", "idr", "rp"]);
+        self.add("MYR", "RM %@", 4.5, &["malaysian ringgit", "ringgit", "myr", "rm"]);
+        self.add("VND", "%@ \u{20AB}", 25000.0, &["vietnamese dong", "dong", "vnd", "\u{20AB}"]);
+
+        // --- East Asia ---
+        self.add("TWD", "NT$ %@", 32.0, &["new taiwan dollar", "new taiwan dollars",
+            "twd", "nt$", "nt dollar", "ntd"]);
+
+        // --- Middle East ---
+        self.add("KWD", "%@ KD", 0.31, &["kuwaiti dinar", "kuwaiti dinars", "kwd"]);
+        self.add("QAR", "%@ QR", 3.64, &["qatari rial", "qatari rials", "qar"]);
+        self.add("OMR", "%@ RO", 0.385, &["omani rial", "omani rials", "omr"]);
+        self.add("BHD", "%@ BD", 0.376, &["bahraini dinar", "bahraini dinars", "bhd"]);
+        self.add("JOD", "%@ JD", 0.709, &["jordanian dinar", "jordanian dinars", "jod"]);
+        self.add("EGP", "E\u{00A3} %@", 49.0, &["egyptian pound", "egyptian pounds", "egp"]);
+
+        // --- Africa ---
+        self.add("NGN", "\u{20A6} %@", 1550.0, &["nigerian naira", "naira", "ngn", "\u{20A6}"]);
+        self.add("KES", "%@ KSh", 154.0, &["kenyan shilling", "kenyan shillings", "kes", "ksh"]);
+        self.add("GHS", "GH\u{20B5} %@", 14.5, &["ghanaian cedi", "cedi", "ghs", "gh\u{20B5}"]);
+        self.add("TZS", "%@ TSh", 2650.0, &["tanzanian shilling", "tanzanian shillings", "tzs", "tsh"]);
+
+        // --- Europe (additional) ---
+        self.add("RON", "%@ lei", 4.6, &["romanian leu", "romanian lei", "ron"]);
+        self.add("BGN", "%@ лв", 1.8, &["bulgarian lev", "bulgarian leva", "lev", "leva", "bgn"]);
+        self.add("HRK", "%@ Kn", 7.0, &["croatian kuna", "kuna", "hrk"]);
+        self.add("ISK", "%@ kr", 138.0, &["icelandic krona", "icelandic kronas", "isk"]);
+
+        // --- South America ---
+        self.add("COP", "$%@ COP", 4100.0, &["colombian peso", "colombian pesos", "cop"]);
+        self.add("ARS", "%@ ARS", 870.0, &["argentine peso", "argentine pesos", "ars"]);
+        self.add("CLP", "%@ CLP", 950.0, &["chilean peso", "chilean pesos", "clp"]);
+        self.add("PEN", "%@ S/.", 3.75, &["peruvian sol", "peruvian soles", "pen", "s/."]);
+        self.add("UYU", "$U %@", 40.0, &["uruguayan peso", "uruguayan pesos", "uyu", "$u"]);
+
+        // --- Crypto ---
+        self.add("BTC", "%@ BTC", 0.000015, &["bitcoin", "bitcoins", "btc"]);
+        self.add("ETH", "%@ ETH", 0.00049, &["ethereum", "ether", "eth"]);
     }
 
     pub fn lookup(&self, name: &str) -> Option<CurrencyId> {
@@ -521,4 +573,194 @@ pub enum ConversionTarget {
     Unit(UnitId),
     Currency(CurrencyId),
     Repr(ReprKind),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_original_currencies_present() {
+        let ct = CurrencyTable::new();
+        // All original currencies must still resolve
+        let originals = [
+            "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "CNY",
+            "INR", "KRW", "RUB", "BRL", "MXN", "SEK", "NOK", "DKK",
+            "PLN", "CZK", "HUF", "TRY", "SGD", "HKD", "THB", "ZAR",
+            "AED", "SAR", "ILS", "UAH", "NZD", "BTC", "ETH",
+        ];
+        for code in &originals {
+            assert!(ct.lookup(&code.to_lowercase()).is_some(),
+                "Original currency {} should be present", code);
+        }
+    }
+
+    #[test]
+    fn test_new_major_currencies_present() {
+        let ct = CurrencyTable::new();
+        let new_currencies = [
+            ("PKR", 278.0),
+            ("BDT", 110.0),
+            ("LKR", 325.0),
+            ("NPR", 133.0),
+            ("PHP", 56.0),
+            ("IDR", 15800.0),
+            ("MYR", 4.5),
+            ("VND", 25000.0),
+            ("TWD", 32.0),
+            ("KWD", 0.31),
+            ("QAR", 3.64),
+            ("OMR", 0.385),
+            ("BHD", 0.376),
+            ("JOD", 0.709),
+            ("EGP", 49.0),
+            ("NGN", 1550.0),
+            ("KES", 154.0),
+            ("GHS", 14.5),
+            ("TZS", 2650.0),
+            ("RON", 4.6),
+            ("BGN", 1.8),
+            ("HRK", 7.0),
+            ("ISK", 138.0),
+            ("COP", 4100.0),
+            ("ARS", 870.0),
+            ("CLP", 950.0),
+            ("PEN", 3.75),
+            ("UYU", 40.0),
+        ];
+        for (code, expected_rate) in &new_currencies {
+            let id = ct.lookup(&code.to_lowercase())
+                .unwrap_or_else(|| panic!("Currency {} not found", code));
+            let def = ct.get(id).unwrap();
+            assert_eq!(def.code, *code);
+            assert!((def.rate_to_usd - expected_rate).abs() < 0.01,
+                "{} rate mismatch: expected {}, got {}", code, expected_rate, def.rate_to_usd);
+        }
+    }
+
+    #[test]
+    fn test_usd_variants() {
+        let ct = CurrencyTable::new();
+        let usd_id = ct.lookup("usd").unwrap();
+        for v in &["dollar", "dollars", "usd", "bucks"] {
+            assert_eq!(ct.lookup(v), Some(usd_id), "USD variant '{}' missing", v);
+        }
+    }
+
+    #[test]
+    fn test_eur_variants() {
+        let ct = CurrencyTable::new();
+        let eur_id = ct.lookup("eur").unwrap();
+        for v in &["euro", "euros", "eur"] {
+            assert_eq!(ct.lookup(v), Some(eur_id), "EUR variant '{}' missing", v);
+        }
+    }
+
+    #[test]
+    fn test_gbp_variants() {
+        let ct = CurrencyTable::new();
+        let gbp_id = ct.lookup("gbp").unwrap();
+        for v in &["gbp", "quid", "pound sterling", "british pound"] {
+            assert_eq!(ct.lookup(v), Some(gbp_id), "GBP variant '{}' missing", v);
+        }
+    }
+
+    #[test]
+    fn test_cny_variants() {
+        let ct = CurrencyTable::new();
+        let cny_id = ct.lookup("cny").unwrap();
+        for v in &["yuan", "rmb", "renminbi", "cny", "chinese yuan"] {
+            assert_eq!(ct.lookup(v), Some(cny_id), "CNY variant '{}' missing", v);
+        }
+    }
+
+    #[test]
+    fn test_inr_variants() {
+        let ct = CurrencyTable::new();
+        let inr_id = ct.lookup("inr").unwrap();
+        for v in &["rupee", "rupees", "inr", "rs", "\u{20B9}"] {
+            assert_eq!(ct.lookup(v), Some(inr_id), "INR variant '{}' missing", v);
+        }
+    }
+
+    #[test]
+    fn test_chf_variants() {
+        let ct = CurrencyTable::new();
+        let chf_id = ct.lookup("chf").unwrap();
+        for v in &["chf", "franc", "francs", "swiss franc", "swiss francs"] {
+            assert_eq!(ct.lookup(v), Some(chf_id), "CHF variant '{}' missing", v);
+        }
+    }
+
+    #[test]
+    fn test_brl_variants() {
+        let ct = CurrencyTable::new();
+        let brl_id = ct.lookup("brl").unwrap();
+        for v in &["brl", "real", "reais", "r$", "brazilian real"] {
+            assert_eq!(ct.lookup(v), Some(brl_id), "BRL variant '{}' missing", v);
+        }
+    }
+
+    #[test]
+    fn test_compound_symbol_variants() {
+        let ct = CurrencyTable::new();
+        // Compound symbols should be in variants so copy-paste works
+        assert!(ct.lookup("r$").is_some(), "R$ should resolve to BRL");
+        assert!(ct.lookup("hk$").is_some(), "HK$ should resolve to HKD");
+        assert!(ct.lookup("s$").is_some(), "S$ should resolve to SGD");
+        assert!(ct.lookup("nt$").is_some(), "NT$ should resolve to TWD");
+        assert!(ct.lookup("$u").is_some(), "$U should resolve to UYU");
+    }
+
+    #[test]
+    fn test_currency_conversion_new_currencies() {
+        let ct = CurrencyTable::new();
+        let usd_id = ct.lookup("usd").unwrap();
+        let pkr_id = ct.lookup("pkr").unwrap();
+        // 1 USD -> PKR should be ~278
+        let result = ct.convert(1.0, usd_id, pkr_id).unwrap();
+        assert!((result - 278.0).abs() < 1.0, "1 USD should be ~278 PKR, got {}", result);
+    }
+
+    #[test]
+    fn test_currency_conversion_cross() {
+        let ct = CurrencyTable::new();
+        let eur_id = ct.lookup("eur").unwrap();
+        let gbp_id = ct.lookup("gbp").unwrap();
+        // EUR->GBP: 1 EUR in USD = 1/0.87, then USD->GBP = (1/0.87)*0.76
+        let result = ct.convert(1.0, eur_id, gbp_id).unwrap();
+        let expected = 0.76 / 0.87;
+        assert!((result - expected).abs() < 0.01,
+            "1 EUR -> GBP: expected {}, got {}", expected, result);
+    }
+
+    #[test]
+    fn test_update_rate_new_currency() {
+        let mut ct = CurrencyTable::new();
+        assert!(ct.update_rate("PKR", 280.0));
+        let id = ct.lookup("pkr").unwrap();
+        let def = ct.get(id).unwrap();
+        assert!((def.rate_to_usd - 280.0).abs() < 0.01);
+    }
+
+    #[test]
+    fn test_iso_code_lookup_case_insensitive() {
+        let ct = CurrencyTable::new();
+        // ISO codes registered via variants should work in lowercase
+        let codes = [
+            "usd", "eur", "gbp", "jpy", "chf", "cad", "aud", "cny",
+            "inr", "krw", "rub", "brl", "mxn", "sek", "nok", "dkk",
+            "pln", "czk", "huf", "sgd", "hkd", "thb", "zar", "aed",
+            "sar", "ils", "uah", "nzd", "btc", "eth",
+            "pkr", "bdt", "lkr", "npr", "php", "idr", "myr", "vnd",
+            "twd", "kwd", "qar", "omr", "bhd", "jod", "egp",
+            "ngn", "kes", "ghs", "tzs",
+            "ron", "bgn", "hrk", "isk",
+            "cop", "ars", "clp", "pen", "uyu",
+        ];
+        for code in &codes {
+            assert!(ct.lookup(code).is_some(),
+                "ISO code '{}' should be lookupable", code);
+        }
+    }
 }

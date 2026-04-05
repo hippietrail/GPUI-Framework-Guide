@@ -182,17 +182,22 @@ impl<'a> Lexer<'a> {
         let c = self.peek_char()?;
         let (symbol, currency_code) = match c {
             '$' => ("$", "USD"),
-            '\u{20AC}' => ("\u{20AC}", "EUR"),
-            '\u{00A3}' => ("\u{00A3}", "GBP"),
-            '\u{00A5}' => ("\u{00A5}", "JPY"),
-            '\u{20BD}' => ("\u{20BD}", "RUB"),
-            '\u{20AA}' => ("\u{20AA}", "ILS"),
-            '\u{20B9}' => ("\u{20B9}", "INR"),
-            '\u{20A9}' => ("\u{20A9}", "KRW"),
-            '\u{20B4}' => ("\u{20B4}", "UAH"),
-            '\u{20BF}' => ("\u{20BF}", "BTC"),
-            '\u{20BA}' => ("\u{20BA}", "TRY"),
-            '\u{0E3F}' => ("\u{0E3F}", "THB"),
+            '\u{20AC}' => ("\u{20AC}", "EUR"),   // €
+            '\u{00A3}' => ("\u{00A3}", "GBP"),   // £
+            '\u{00A5}' => ("\u{00A5}", "JPY"),   // ¥
+            '\u{20BD}' => ("\u{20BD}", "RUB"),   // ₽
+            '\u{20AA}' => ("\u{20AA}", "ILS"),   // ₪
+            '\u{20B9}' => ("\u{20B9}", "INR"),   // ₹
+            '\u{20A9}' => ("\u{20A9}", "KRW"),   // ₩
+            '\u{20B4}' => ("\u{20B4}", "UAH"),   // ₴
+            '\u{20BF}' => ("\u{20BF}", "BTC"),   // ₿
+            '\u{20BA}' => ("\u{20BA}", "TRY"),   // ₺
+            '\u{0E3F}' => ("\u{0E3F}", "THB"),   // ฿
+            '\u{20B1}' => ("\u{20B1}", "PHP"),   // ₱
+            '\u{20A6}' => ("\u{20A6}", "NGN"),   // ₦
+            '\u{20AB}' => ("\u{20AB}", "VND"),   // ₫
+            '\u{20A8}' => ("\u{20A8}", "PKR"),   // ₨
+            '\u{09F3}' => ("\u{09F3}", "BDT"),   // ৳
             _ => return None,
         };
         if let Some(id) = self.currency_table.lookup(currency_code) {
@@ -701,5 +706,104 @@ mod tests {
         let mut l = Lexer::new("1,000,000", &ut, &ct);
         let tokens = l.tokenize();
         assert!(matches!(tokens[0].kind, TokenKind::Number(n) if (n - 1_000_000.0).abs() < 1e-10));
+    }
+
+    #[test]
+    fn test_inr_symbol() {
+        let (ut, ct) = make_tables();
+        let mut l = Lexer::new("\u{20B9}500", &ut, &ct);
+        let tokens = l.tokenize();
+        assert!(matches!(tokens[0].kind, TokenKind::CurrencySymbol(_)));
+        assert!(matches!(tokens[1].kind, TokenKind::Number(n) if (n - 500.0).abs() < 1e-10));
+    }
+
+    #[test]
+    fn test_php_symbol() {
+        let (ut, ct) = make_tables();
+        let mut l = Lexer::new("\u{20B1}100", &ut, &ct);
+        let tokens = l.tokenize();
+        assert!(matches!(tokens[0].kind, TokenKind::CurrencySymbol(_)));
+    }
+
+    #[test]
+    fn test_ngn_symbol() {
+        let (ut, ct) = make_tables();
+        let mut l = Lexer::new("\u{20A6}5000", &ut, &ct);
+        let tokens = l.tokenize();
+        assert!(matches!(tokens[0].kind, TokenKind::CurrencySymbol(_)));
+    }
+
+    #[test]
+    fn test_vnd_symbol() {
+        let (ut, ct) = make_tables();
+        let mut l = Lexer::new("\u{20AB}10000", &ut, &ct);
+        let tokens = l.tokenize();
+        assert!(matches!(tokens[0].kind, TokenKind::CurrencySymbol(_)));
+    }
+
+    #[test]
+    fn test_pkr_symbol() {
+        let (ut, ct) = make_tables();
+        let mut l = Lexer::new("\u{20A8}1000", &ut, &ct);
+        let tokens = l.tokenize();
+        assert!(matches!(tokens[0].kind, TokenKind::CurrencySymbol(_)));
+    }
+
+    #[test]
+    fn test_bdt_symbol() {
+        let (ut, ct) = make_tables();
+        let mut l = Lexer::new("\u{09F3}500", &ut, &ct);
+        let tokens = l.tokenize();
+        assert!(matches!(tokens[0].kind, TokenKind::CurrencySymbol(_)));
+    }
+
+    #[test]
+    fn test_new_currency_words() {
+        let (ut, ct) = make_tables();
+        // Test that word-based currency names tokenize as Currency
+        let test_cases = [
+            ("100 PKR", "PKR"),
+            ("100 PHP", "PHP"),
+            ("100 IDR", "IDR"),
+            ("100 MYR", "MYR"),
+            ("100 VND", "VND"),
+            ("100 TWD", "TWD"),
+            ("100 EGP", "EGP"),
+            ("100 NGN", "NGN"),
+        ];
+        for (input, _code) in &test_cases {
+            let mut l = Lexer::new(input, &ut, &ct);
+            let tokens = l.tokenize();
+            assert!(matches!(tokens[0].kind, TokenKind::Number(_)),
+                "Expected number for input '{}'", input);
+            assert!(matches!(tokens[1].kind, TokenKind::Currency(_)),
+                "Expected currency token for input '{}'", input);
+        }
+    }
+
+    #[test]
+    fn test_variant_words() {
+        let (ut, ct) = make_tables();
+        // Test common variant words tokenize as Currency
+        let variants = [
+            "rmb", "renminbi", "quid", "bucks", "rupees",
+        ];
+        for v in &variants {
+            let input = format!("100 {}", v);
+            let mut l = Lexer::new(&input, &ut, &ct);
+            let tokens = l.tokenize();
+            assert!(matches!(tokens[1].kind, TokenKind::Currency(_)),
+                "Variant '{}' should tokenize as Currency", v);
+        }
+    }
+
+    #[test]
+    fn test_compound_symbol_nt_dollar() {
+        let (ut, ct) = make_tables();
+        // NT$ should be recognized as a compound currency symbol
+        let mut l = Lexer::new("NT$100", &ut, &ct);
+        let tokens = l.tokenize();
+        assert!(matches!(tokens[0].kind, TokenKind::CurrencySymbol(_)),
+            "NT$ should tokenize as CurrencySymbol");
     }
 }
