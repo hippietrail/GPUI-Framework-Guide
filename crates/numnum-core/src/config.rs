@@ -54,6 +54,7 @@ pub struct EditorSettings {
     pub line_height: f32,
     pub tab_size: u32,
     pub split_ratio: f32,
+    pub copy_full_precision: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -190,6 +191,9 @@ impl Settings {
         let get_u32 = |section: &str, key: &str, default: u32| -> u32 {
             sections.get(section).and_then(|s| s.get(key)).and_then(|v| v.parse().ok()).unwrap_or(default)
         };
+        let get_bool = |section: &str, key: &str, default: bool| -> bool {
+            sections.get(section).and_then(|s| s.get(key)).map(|v| v == "true").unwrap_or(default)
+        };
 
         Settings {
             theme: ThemeSettings {
@@ -230,6 +234,7 @@ impl Settings {
                 line_height: get_f32("editor", "line_height", 1.6),
                 tab_size: get_u32("editor", "tab_size", 4),
                 split_ratio: get_f32("editor.split", "default_ratio", 0.6),
+                copy_full_precision: get_bool("editor.clipboard", "full_precision", true),
             },
         }
     }
@@ -277,6 +282,7 @@ impl Default for Settings {
                 line_height: 1.6,
                 tab_size: 4,
                 split_ratio: 0.6,
+                copy_full_precision: true,
             },
         }
     }

@@ -25,9 +25,10 @@ impl NumNumApp {
         theme: Theme,
         font_family: String,
         font_size: f32,
+        copy_full_precision: bool,
         live_rates: HashMap<String, f64>,
     ) -> Self {
-        let results_pane = cx.new(|_| ResultsPane::new(theme.clone()));
+        let results_pane = cx.new(|_| ResultsPane::new(theme.clone(), copy_full_precision));
         let status_bar = cx.new(|_| StatusBar::new(theme.clone()));
 
         let theme_clone = theme.clone();
