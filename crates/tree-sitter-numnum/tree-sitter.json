@@ -1,0 +1,20 @@
+{
+  "metadata": {
+    "version": "0.1.0",
+    "license": "MIT"
+  },
+  "grammars": [
+    {
+      "name": "numnum",
+      "camelCase": "numnum",
+      "scope": "source.numnum",
+      "path": ".",
+      "file-types": ["numnum", "nn"]
+    }
+  ],
+  "bindings": {
+    "rust": {
+      "path": "bindings/rust"
+    }
+  }
+}

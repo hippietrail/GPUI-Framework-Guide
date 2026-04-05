@@ -27,6 +27,7 @@ members = [
     "crates/ztracing",
     "crates/ztracing_macro",
     "crates/numnum-core",
+    "crates/tree-sitter-numnum/bindings/rust",
 ]
 
 [workspace.lints.rust]
