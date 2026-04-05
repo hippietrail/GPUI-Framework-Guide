@@ -55,7 +55,9 @@ impl NumNumApp {
             rates::apply_rates(&mut eval_ctx.currency_table, &live_rates);
             let mut results = Vec::new();
             let mut diagnostics: Vec<Option<String>> = Vec::new();
-            let mut running_total = Value::None;
+            let mut running_total: f64 = 0.0;
+            let mut last_val = Value::None;
+            let mut has_any_value = false;
 
             for line_text in content.split('\n') {
                 match eval_ctx.eval_line(line_text) {
@@ -67,16 +69,13 @@ impl NumNumApp {
                         let formatted = format_value(
                             &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
                         );
-                        // Full precision for clipboard copy
                         let full_precision = format_value_full_precision(
                             &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
                         );
                         if let Some(n) = val.as_number() {
-                            match &running_total {
-                                Value::None => running_total = Value::Number(n),
-                                Value::Number(prev) => running_total = Value::Number(prev + n),
-                                _ => running_total = Value::Number(n),
-                            }
+                            running_total += n;
+                            last_val = val.clone();
+                            has_any_value = true;
                         }
                         results.push(LineResult::Value(formatted, full_precision));
                         diagnostics.push(None);
@@ -88,9 +87,16 @@ impl NumNumApp {
                 }
             }
 
-            let total_str = match &running_total {
-                Value::Number(n) => numnum_core::format::format_number(*n),
-                _ => String::new(),
+            // Format total with the last result's unit/currency
+            let total_str = if !has_any_value {
+                String::new()
+            } else {
+                let total_val = match &last_val {
+                    Value::WithUnit(_, u) => Value::WithUnit(running_total, *u),
+                    Value::WithCurrency(_, c) => Value::WithCurrency(running_total, *c),
+                    _ => Value::Number(running_total),
+                };
+                format_value(&total_val, &eval_ctx.unit_table, &eval_ctx.currency_table)
             };
 
             // Update editor diagnostics (for inlay rendering)
@@ -183,17 +189,17 @@ impl Render for NumNumApp {
                         // Divider — invisible until hovered, draggable
                         div()
                             .id("split-divider")
-                            .w(px(6.))
+                            .w(px(12.))
                             .h_full()
                             .flex_shrink_0()
                             .cursor(CursorStyle::ResizeLeftRight)
                             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
                             .child(
-                                // Thin visible line inside the wider hit target
                                 div()
-                                    .w(px(1.))
+                                    .w(px(3.))
                                     .h_full()
                                     .mx_auto()
+                                    .rounded_sm()
                                     .when(is_dragging, |el| el.bg(divider_color))
                                     .hover(|style| style.bg(divider_color)),
                             ),

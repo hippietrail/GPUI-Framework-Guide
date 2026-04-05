@@ -42,21 +42,28 @@ impl Render for StatusBar {
             .bg(self.theme.background)
             .px(px(12.))
             .items_center()
-            .justify_between()
             .text_size(px(12.))
+            // Left: cursor position
             .child(
                 div()
+                    .flex_1()
+                    .text_color(self.theme.text_dimmed)
+                    .child(format!("Ln {}, Col {}", self.line, self.col)),
+            )
+            // Center: total
+            .child(
+                div()
+                    .flex_1()
                     .text_color(self.theme.text_muted)
+                    .flex()
+                    .justify_center()
                     .child(if self.running_total.is_empty() {
                         String::new()
                     } else {
                         format!("Total: {}", self.running_total)
                     }),
             )
-            .child(
-                div()
-                    .text_color(self.theme.text_dimmed)
-                    .child(format!("Ln {}, Col {}", self.line, self.col)),
-            )
+            // Right: spacer for balance
+            .child(div().flex_1())
     }
 }
