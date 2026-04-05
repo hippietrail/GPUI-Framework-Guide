@@ -197,7 +197,6 @@ impl Render for NumNumApp {
                             .justify_center()
                             .cursor(CursorStyle::ResizeLeftRight)
                             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
-                            .hover(|style| style.bg(gpui::hsla(0., 0., 1., 0.03)))
                             .child(
                                 div()
                                     .w(px(5.))
