@@ -45,6 +45,10 @@ edition = "2024"
 [dependencies]
 gpui = { path = "crates/gpui", default-features = false, features = ["font-kit"] }
 gpui_platform = { path = "crates/gpui_platform", default-features = false, features = ["font-kit"] }
+numnum-core = { path = "crates/numnum-core" }
+tree-sitter-numnum = { path = "crates/tree-sitter-numnum/bindings/rust" }
+tree-sitter = "0.25"
+tree-sitter-highlight = "0.25"
 unicode-segmentation = "1.10"
 
 [patch.crates-io]
