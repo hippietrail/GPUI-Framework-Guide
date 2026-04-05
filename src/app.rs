@@ -186,22 +186,25 @@ impl Render for NumNumApp {
                             .child(self.editor.clone()),
                     )
                     .child(
-                        // Divider — invisible until hovered, draggable
+                        // Divider — invisible until outer area hovered, draggable
                         div()
                             .id("split-divider")
-                            .w(px(12.))
+                            .group("divider")
+                            .w(px(14.))
                             .h_full()
                             .flex_shrink_0()
+                            .flex()
+                            .justify_center()
                             .cursor(CursorStyle::ResizeLeftRight)
                             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
+                            .hover(|style| style.bg(gpui::hsla(0., 0., 1., 0.03)))
                             .child(
                                 div()
-                                    .w(px(3.))
+                                    .w(px(5.))
                                     .h_full()
-                                    .mx_auto()
                                     .rounded_sm()
                                     .when(is_dragging, |el| el.bg(divider_color))
-                                    .hover(|style| style.bg(divider_color)),
+                                    .group_hover("divider", |style| style.bg(divider_color)),
                             ),
                     )
                     .child(
