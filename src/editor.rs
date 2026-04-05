@@ -1017,7 +1017,6 @@ impl Render for Editor {
             .font_family(self.font_family.clone())
             .text_size(self.font_size)
             .text_color(self.theme.text)
-            .overflow_y_hidden()
             .children({
                 let mut children: Vec<gpui::AnyElement> = Vec::new();
                 for i in 0..line_count {

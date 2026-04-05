@@ -52,9 +52,8 @@ impl Render for ResultsPane {
         div()
             .flex()
             .flex_col()
-            .size_full()
+            .w_full()
             .bg(theme.background)
-            .overflow_y_hidden()
             .children({
                 let mut children: Vec<gpui::AnyElement> = Vec::new();
                 for (i, result) in results.into_iter().enumerate() {
