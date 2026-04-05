@@ -1450,3 +1450,51 @@ mod reference_compat_tests {
         assert_eq!(eval_formatted("0b1010 >> 1"), "0b101");
     }
 }
+
+#[cfg(test)]
+mod roundtrip_tests {
+    use crate::evaluator::EvalContext;
+    use crate::format::format_value;
+
+    /// Verify that formatted results can be pasted back and re-evaluated
+    #[test]
+    fn test_result_roundtrip_inches() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("90 inches - 2 feet").unwrap();
+        let formatted = format_value(&result, &ctx.unit_table, &ctx.currency_table);
+        // Formatted result should be parseable
+        let mut ctx2 = EvalContext::new();
+        let reparsed = ctx2.eval_line(&formatted);
+        assert!(reparsed.is_ok(), "Could not re-parse formatted result: {} -> {:?}", formatted, reparsed);
+    }
+
+    #[test]
+    fn test_result_roundtrip_feet() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("2 feet in inches").unwrap();
+        let formatted = format_value(&result, &ctx.unit_table, &ctx.currency_table);
+        let mut ctx2 = EvalContext::new();
+        let reparsed = ctx2.eval_line(&formatted);
+        assert!(reparsed.is_ok(), "Could not re-parse: {} -> {:?}", formatted, reparsed);
+    }
+
+    #[test]
+    fn test_result_roundtrip_currency() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("$100").unwrap();
+        let formatted = format_value(&result, &ctx.unit_table, &ctx.currency_table);
+        let mut ctx2 = EvalContext::new();
+        let reparsed = ctx2.eval_line(&formatted);
+        assert!(reparsed.is_ok(), "Could not re-parse: {} -> {:?}", formatted, reparsed);
+    }
+
+    #[test]
+    fn test_result_roundtrip_km() {
+        let mut ctx = EvalContext::new();
+        let result = ctx.eval_line("5 km").unwrap();
+        let formatted = format_value(&result, &ctx.unit_table, &ctx.currency_table);
+        let mut ctx2 = EvalContext::new();
+        let reparsed = ctx2.eval_line(&formatted);
+        assert!(reparsed.is_ok(), "Could not re-parse: {} -> {:?}", formatted, reparsed);
+    }
+}

@@ -160,7 +160,7 @@ impl UnitTable {
         for &(prefix, sym, factor) in si_prefixes {
             self.add_si_length(prefix, sym, factor);
         }
-        self.add("inch", "in", Dimension::Length, 0.0254, 0.0,
+        self.add("inch", "inches", Dimension::Length, 0.0254, 0.0,
             &["inch", "inches", "in", "\u{2033}"]);
         self.add("foot", "ft", Dimension::Length, 0.3048, 0.0,
             &["foot", "feet", "ft", "ft.", "foots", "feets"]);

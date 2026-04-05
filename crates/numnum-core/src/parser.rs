@@ -310,30 +310,29 @@ impl Parser {
             }
             TokenKind::Convert => {
                 // Conversion target: unit, currency, or repr
-                let target = match self.peek() {
+                match self.peek() {
                     TokenKind::Unit(id) => {
                         let id = *id;
                         self.advance();
-                        ConversionTarget::Unit(id)
+                        Ok(Expr::Conversion { expr: Box::new(lhs), target: ConversionTarget::Unit(id) })
                     }
                     TokenKind::Currency(id) => {
                         let id = *id;
                         self.advance();
-                        ConversionTarget::Currency(id)
+                        Ok(Expr::Conversion { expr: Box::new(lhs), target: ConversionTarget::Currency(id) })
                     }
                     TokenKind::Repr(r) => {
                         let r = *r;
                         self.advance();
-                        ConversionTarget::Repr(r)
+                        Ok(Expr::Conversion { expr: Box::new(lhs), target: ConversionTarget::Repr(r) })
                     }
-                    // Also check if next word is a unit/currency name
                     TokenKind::Ident(_) => {
-                        // Fall through — the target word should have been lexed as Unit/Currency
-                        return Err(format!("Unknown conversion target: {:?}", self.peek()));
+                        Err(format!("Unknown conversion target: {:?}", self.peek()))
                     }
-                    _ => return Err(format!("Expected conversion target, got {:?}", self.peek())),
-                };
-                Ok(Expr::Conversion { expr: Box::new(lhs), target })
+                    _ => {
+                        Err(format!("Expected conversion target, got {:?}", self.peek()))
+                    }
+                }
             }
             TokenKind::AsAPctOf => {
                 let base = self.parse_expr(r_bp)?;
