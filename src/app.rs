@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use gpui::{App, Context, Entity, Render, SharedString, Window, div, prelude::*, px};
+use gpui::{Context, Entity, Render, SharedString, Window, div, prelude::*, px};
 use numnum_core::format::format_value;
 use numnum_core::{EvalContext, Value};
 
@@ -30,75 +30,69 @@ impl NumNumApp {
         let results_pane = cx.new(|_| ResultsPane::new(theme.clone()));
         let status_bar = cx.new(|_| StatusBar::new(theme.clone()));
 
-        let results_entity = results_pane.clone();
-        let status_entity = status_bar.clone();
         let theme_clone = theme.clone();
         let font_for_app = font_family.clone();
 
         let editor = cx.new(|cx| {
-            Editor::new(
-                cx,
-                theme_clone,
-                font_family,
-                font_size,
-                Some(Box::new(move |content: &str, _window: &mut Window, cx: &mut App| {
-                    // Evaluate all lines
-                    let mut eval_ctx = EvalContext::new();
-                    rates::apply_rates(&mut eval_ctx.currency_table, &live_rates);
-                    let mut results = Vec::new();
-                    let mut running_total = Value::None;
-
-                    for line in content.split('\n') {
-                        match eval_ctx.eval_line(line) {
-                            Ok(Value::None) => {
-                                results.push(LineResult::None);
-                            }
-                            Ok(val) => {
-                                let formatted = format_value(
-                                    &val,
-                                    &eval_ctx.unit_table,
-                                    &eval_ctx.currency_table,
-                                );
-                                // Track running total
-                                if let Some(n) = val.as_number() {
-                                    match &running_total {
-                                        Value::None => running_total = Value::Number(n),
-                                        Value::Number(prev) => {
-                                            running_total = Value::Number(prev + n)
-                                        }
-                                        _ => running_total = Value::Number(n),
-                                    }
-                                }
-                                results.push(LineResult::Value(formatted));
-                            }
-                            Err(e) => {
-                                results.push(LineResult::Error(e.to_string()));
-                            }
-                        }
-                    }
-
-                    let total_str = match &running_total {
-                        Value::Number(n) => numnum_core::format::format_number(*n),
-                        _ => String::new(),
-                    };
-
-                    results_entity.update(cx, |pane, cx| {
-                        pane.set_results(results, cx);
-                    });
-                    status_entity.update(cx, |bar, cx| {
-                        bar.set_running_total(total_str, cx);
-                    });
-                })),
-            )
+            Editor::new(cx, theme_clone, font_family, font_size, None)
         });
 
-        // Observe editor for cursor position updates
-        let status_for_observe = status_bar.clone();
-        let editor_for_observe = editor.clone();
+        // Observe editor for content changes: evaluate, update results + diagnostics
+        let results_for_eval = results_pane.clone();
+        let status_for_eval = status_bar.clone();
+        let editor_for_eval = editor.clone();
         cx.observe(&editor, move |_this, _editor_entity, cx| {
-            let editor_read = editor_for_observe.read(cx);
-            let (line, col) = editor_read.cursor_line_col();
-            status_for_observe.update(cx, |bar, cx| {
+            let content = editor_for_eval.read(cx).content().to_string();
+            let (line, col) = editor_for_eval.read(cx).cursor_line_col();
+
+            let mut eval_ctx = EvalContext::new();
+            rates::apply_rates(&mut eval_ctx.currency_table, &live_rates);
+            let mut results = Vec::new();
+            let mut diagnostics: Vec<Option<String>> = Vec::new();
+            let mut running_total = Value::None;
+
+            for line_text in content.split('\n') {
+                match eval_ctx.eval_line(line_text) {
+                    Ok(Value::None) => {
+                        results.push(LineResult::None);
+                        diagnostics.push(None);
+                    }
+                    Ok(val) => {
+                        let formatted = format_value(
+                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
+                        );
+                        if let Some(n) = val.as_number() {
+                            match &running_total {
+                                Value::None => running_total = Value::Number(n),
+                                Value::Number(prev) => running_total = Value::Number(prev + n),
+                                _ => running_total = Value::Number(n),
+                            }
+                        }
+                        results.push(LineResult::Value(formatted));
+                        diagnostics.push(None);
+                    }
+                    Err(e) => {
+                        results.push(LineResult::None);
+                        diagnostics.push(Some(e.to_string()));
+                    }
+                }
+            }
+
+            let total_str = match &running_total {
+                Value::Number(n) => numnum_core::format::format_number(*n),
+                _ => String::new(),
+            };
+
+            // Update editor diagnostics (for inlay rendering)
+            editor_for_eval.update(cx, |editor, _cx| {
+                editor.diagnostics = diagnostics.clone();
+            });
+
+            results_for_eval.update(cx, |pane, cx| {
+                pane.set_results_with_diagnostics(results, &diagnostics, cx);
+            });
+            status_for_eval.update(cx, |bar, cx| {
+                bar.set_running_total(total_str.clone(), cx);
                 bar.set_cursor(line, col, cx);
             });
         })

@@ -57,6 +57,8 @@ pub struct Editor {
     font_size: Pixels,
     unit_table: UnitTable,
     currency_table: CurrencyTable,
+    // Per-line diagnostics (error messages shown as inlay below the line)
+    pub diagnostics: Vec<Option<String>>,
     // Per-line layout cache (rebuilt each frame)
     line_layouts: Vec<Option<ShapedLine>>,
     last_bounds: Option<Bounds<Pixels>>,
@@ -84,6 +86,7 @@ impl Editor {
             theme,
             font_family: SharedString::from(font_family),
             font_size: px(font_size),
+            diagnostics: Vec::new(),
             unit_table: UnitTable::new(),
             currency_table: CurrencyTable::new(),
             line_layouts: Vec::new(),
@@ -1014,12 +1017,33 @@ impl Render for Editor {
             .text_size(self.font_size)
             .text_color(self.theme.text)
             .overflow_y_hidden()
-            .children((0..line_count).map(|i| {
-                EditorLineElement {
-                    editor: entity.clone(),
-                    line_index: i,
+            .children({
+                let mut children: Vec<gpui::AnyElement> = Vec::new();
+                for i in 0..line_count {
+                    // The editor line itself
+                    children.push(
+                        EditorLineElement {
+                            editor: entity.clone(),
+                            line_index: i,
+                        }
+                        .into_any_element(),
+                    );
+                    // Inlay diagnostic below error lines
+                    if let Some(Some(diag)) = self.diagnostics.get(i) {
+                        children.push(
+                            div()
+                                .w_full()
+                                .px(px(4.))
+                                .py(px(2.))
+                                .text_size(px(12.))
+                                .text_color(self.theme.error)
+                                .child(diag.clone())
+                                .into_any_element(),
+                        );
+                    }
                 }
-            }))
+                children
+            })
     }
 }
 
