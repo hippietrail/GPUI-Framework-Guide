@@ -135,66 +135,54 @@ impl RateCache {
         Ok(map)
     }
 
-    /// Main entry point: returns the best available rates.
-    ///
-    /// Strategy:
-    /// 1. Try to open the database and load cached rates.
-    /// 2. Attempt a live fetch from the API.
-    ///    - If successful, store the new rates in the DB and return them.
-    ///    - If the fetch fails but we have cached rates, return those.
-    /// 3. If no DB and no network, fall back to hardcoded rates.
-    pub fn get_rates(&self) -> HashMap<String, f64> {
-        // Ensure config directory exists
+    /// Fast startup: load cached rates from SQLite, or fall back to hardcoded.
+    /// No network calls. Returns instantly.
+    pub fn get_cached_rates(&self) -> HashMap<String, f64> {
         if let Some(parent) = self.db_path.parent() {
             let _ = std::fs::create_dir_all(parent);
         }
 
         let db_url = format!("sqlite:{}?mode=rwc", self.db_path.display());
 
-        // Build a small tokio runtime for the async sqlx calls.
         let rt = match tokio::runtime::Runtime::new() {
             Ok(rt) => rt,
-            Err(_) => return self.get_rates_no_db(),
+            Err(_) => return hardcoded_rates(),
         };
 
         rt.block_on(async {
             let pool = match sqlx::SqlitePool::connect(&db_url).await {
                 Ok(p) => p,
-                Err(_) => return self.get_rates_no_db(),
+                Err(_) => return hardcoded_rates(),
             };
-
             if self.ensure_db(&pool).await.is_err() {
-                return self.get_rates_no_db();
+                return hardcoded_rates();
             }
-
             let cached = self.load_cached_rates(&pool).await.unwrap_or_default();
-
-            // Try live fetch
-            match self.fetch_live_rates() {
-                Ok(live) => {
-                    // Store in DB (best-effort)
-                    let _ = self.store_rates(&pool, &live).await;
-                    pool.close().await;
-                    live
-                }
-                Err(_) => {
-                    pool.close().await;
-                    if cached.is_empty() {
-                        hardcoded_rates()
-                    } else {
-                        cached
-                    }
-                }
-            }
+            pool.close().await;
+            if cached.is_empty() { hardcoded_rates() } else { cached }
         })
     }
 
-    /// Fallback when we cannot even open the database.
-    fn get_rates_no_db(&self) -> HashMap<String, f64> {
-        match self.fetch_live_rates() {
-            Ok(live) => live,
-            Err(_) => hardcoded_rates(),
+    /// Fetch live rates from the network and store in SQLite.
+    /// Designed to run in a background thread. Returns the new rates on success.
+    pub fn fetch_and_store(&self) -> Option<HashMap<String, f64>> {
+        let live = self.fetch_live_rates().ok()?;
+
+        if let Some(parent) = self.db_path.parent() {
+            let _ = std::fs::create_dir_all(parent);
         }
+        let db_url = format!("sqlite:{}?mode=rwc", self.db_path.display());
+
+        if let Ok(rt) = tokio::runtime::Runtime::new() {
+            rt.block_on(async {
+                if let Ok(pool) = sqlx::SqlitePool::connect(&db_url).await {
+                    let _ = self.ensure_db(&pool).await;
+                    let _ = self.store_rates(&pool, &live).await;
+                    pool.close().await;
+                }
+            });
+        }
+        Some(live)
     }
 }
 
@@ -241,7 +229,7 @@ mod tests {
     #[test]
     fn test_rate_cache_get_rates_returns_nonempty() {
         let cache = RateCache::new();
-        let rates = cache.get_rates();
+        let rates = cache.get_cached_rates();
         // Should always return something (live, cached, or hardcoded)
         assert!(!rates.is_empty());
         assert!(rates.contains_key("USD"));

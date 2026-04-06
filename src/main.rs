@@ -17,8 +17,22 @@ fn main() {
     let settings = Settings::load();
     let theme = Theme::from_settings(&settings);
 
-    // Load currency rates (network fetch + SQLite cache, fallback to hardcoded)
-    let live_rates = rates::RateCache::new().get_rates();
+    // Load cached rates instantly (no network), then fetch live in background
+    let live_rates = std::sync::Arc::new(std::sync::Mutex::new(
+        rates::RateCache::new().get_cached_rates()
+    ));
+
+    // Spawn background thread for network fetch
+    {
+        let rates_ref = live_rates.clone();
+        std::thread::spawn(move || {
+            if let Some(fresh) = rates::RateCache::new().fetch_and_store() {
+                if let Ok(mut rates) = rates_ref.lock() {
+                    *rates = fresh;
+                }
+            }
+        });
+    }
 
     application().run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(900.0), px(640.0)), cx);

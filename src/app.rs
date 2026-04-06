@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 use gpui::{
     Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
@@ -32,7 +33,7 @@ impl NumNumApp {
         font_family: String,
         font_size: f32,
         copy_full_precision: bool,
-        live_rates: HashMap<String, f64>,
+        live_rates: Arc<Mutex<HashMap<String, f64>>>,
     ) -> Self {
         let results_pane = cx.new(|_| ResultsPane::new(theme.clone(), copy_full_precision));
         let status_bar = cx.new(|_| StatusBar::new(theme.clone()));
@@ -58,7 +59,9 @@ impl NumNumApp {
             let (line, col) = editor_for_eval.read(cx).cursor_line_col();
 
             let mut eval_ctx = EvalContext::new();
-            rates::apply_rates(&mut eval_ctx.currency_table, &live_rates);
+            if let Ok(rates) = live_rates.lock() {
+                rates::apply_rates(&mut eval_ctx.currency_table, &rates);
+            }
             let mut results = Vec::new();
             let mut diagnostics: Vec<Option<String>> = Vec::new();
             let mut running_total: f64 = 0.0;
