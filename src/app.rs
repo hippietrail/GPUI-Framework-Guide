@@ -5,6 +5,8 @@ use gpui::{
     Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Render, ScrollHandle, SharedString, Window, div, point, prelude::*, px,
 };
+
+use gpui::relative;
 use numnum_core::format::{format_value, format_value_full_precision};
 use numnum_core::{EvalContext, Value};
 
@@ -128,7 +130,18 @@ impl NumNumApp {
                 let cursor_y = approx_line_height * (line as f32);
                 let current_offset = scroll_handle_for_eval.offset();
                 let viewport_top = -current_offset.y;
-                let viewport_height = px(580.0);
+                // Infer viewport height from scroll handle bounds
+                let max_offset = scroll_handle_for_eval.max_offset();
+                let max_y: f32 = max_offset.y.into();
+                // max_offset.y is the most negative the scroll can go
+                // viewport_height ≈ content_height + max_y (since max_y is negative)
+                let total_lines = editor_for_eval.read(cx).content().split('\n').count();
+                let content_h: f32 = (approx_line_height * (total_lines as f32 + 4.0)).into();
+                let viewport_height = if max_y < 0.0 {
+                    px(content_h + max_y) // content - scrollable range = viewport
+                } else {
+                    px(content_h.min(600.0)) // fallback
+                };
                 let viewport_bottom = viewport_top + viewport_height;
 
                 if cursor_y + approx_line_height > viewport_bottom {
@@ -230,9 +243,11 @@ impl Render for NumNumApp {
                                     .flex()
                                     .flex_row()
                                     .child(
-                                        // Editor pane
+                                        // Editor pane — proportional width
                                         div()
-                                            .flex_1()
+                                            .flex_grow()
+                                            .flex_shrink()
+                                            .flex_basis(relative(self.split_ratio))
                                             .min_w_0()
                                             .child(self.editor.clone()),
                                     )
@@ -241,10 +256,12 @@ impl Render for NumNumApp {
                                         div().w(px(14.)).flex_shrink_0(),
                                     )
                                     .child(
-                                        // Results pane
+                                        // Results pane — proportional width
                                         div()
-                                            .w(px((1.0 - self.split_ratio) * 900.0))
-                                            .flex_shrink_0()
+                                            .flex_grow()
+                                            .flex_shrink()
+                                            .flex_basis(relative(1.0 - self.split_ratio))
+                                            .min_w_0()
                                             .bg(self.theme.background)
                                             .child(self.results_pane.clone()),
                                     ),
@@ -256,7 +273,7 @@ impl Render for NumNumApp {
                             .id("split-divider")
                             .group("divider")
                             .absolute()
-                            .left(px(self.split_ratio * 900.0))
+                            .left(relative(self.split_ratio))
                             .top_0()
                             .bottom_0()
                             .w(px(14.))
