@@ -31,6 +31,8 @@ pub struct NumNumApp {
     scroll_handle: ScrollHandle,
     was_settings_visible: bool,
     appearance_mode: String,
+    dark_theme_name: String,
+    light_theme_name: String,
     show_diagnostics: bool,
 }
 
@@ -209,14 +211,23 @@ impl NumNumApp {
             this.font_size = new_settings.editor.font_size;
             this.show_diagnostics = new_settings.editor.show_diagnostics;
 
-            // Reload theme if appearance mode changed
+            // Reload theme if appearance mode or theme selection changed
             let new_mode = new_settings.appearance.mode.clone();
-            if new_mode != this.appearance_mode {
+            let new_dark = new_settings.appearance.dark_theme.clone();
+            let new_light = new_settings.appearance.light_theme.clone();
+            let mode_changed = new_mode != this.appearance_mode;
+            let dark_changed = new_dark != this.dark_theme_name;
+            let light_changed = new_light != this.light_theme_name;
+
+            if mode_changed || dark_changed || light_changed {
                 this.appearance_mode = new_mode.clone();
+                this.dark_theme_name = new_dark.clone();
+                this.light_theme_name = new_light.clone();
+
                 let theme_name = match new_mode.as_str() {
-                    "dark" => new_settings.appearance.dark_theme.clone(),
-                    "light" => new_settings.appearance.light_theme.clone(),
-                    _ => new_settings.appearance.dark_theme.clone(), // auto defaults to dark
+                    "dark" => new_dark,
+                    "light" => new_light,
+                    _ => new_dark, // auto defaults to dark
                 };
                 let tf = numnum_core::ThemeFile::load(&theme_name);
                 let new_theme = crate::theme::Theme::from_theme_file(&tf);
@@ -246,6 +257,8 @@ impl NumNumApp {
             was_settings_visible: false,
             scroll_handle,
             appearance_mode,
+            dark_theme_name: settings.appearance.dark_theme.clone(),
+            light_theme_name: settings.appearance.light_theme.clone(),
             show_diagnostics,
         }
     }

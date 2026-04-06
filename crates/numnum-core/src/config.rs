@@ -163,6 +163,38 @@ fn themes_dir() -> PathBuf {
     config_dir().join("themes")
 }
 
+/// List available themes from the themes directory.
+/// Returns (filename_without_extension, display_name, appearance) tuples.
+pub fn list_themes() -> Vec<(String, String, String)> {
+    let dir = themes_dir();
+    let mut themes = Vec::new();
+    if let Ok(entries) = std::fs::read_dir(&dir) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.extension().map(|e| e == "toml").unwrap_or(false) {
+                let stem = path.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                if let Ok(content) = std::fs::read_to_string(&path) {
+                    let sections = parse_toml(&content);
+                    let name = sections.get("")
+                        .and_then(|s| s.get("name"))
+                        .cloned()
+                        .unwrap_or_else(|| stem.clone());
+                    let appearance = sections.get("")
+                        .and_then(|s| s.get("appearance"))
+                        .cloned()
+                        .unwrap_or_else(|| "dark".to_string());
+                    themes.push((stem, name, appearance));
+                }
+            }
+        }
+    }
+    themes.sort_by(|a, b| a.1.cmp(&b.1));
+    themes
+}
+
 /// Minimal TOML parser shared by Settings and ThemeFile.
 /// Returns sections mapping "section.name" -> { key -> value }.
 fn parse_toml(toml_str: &str) -> HashMap<String, HashMap<String, String>> {
@@ -274,24 +306,24 @@ impl ThemeFile {
                 text: Color::from_hex("#cdd6f4"),
                 text_muted: Color::from_hex("#a6adc8"),
                 text_dimmed: Color::from_hex("#6c7086"),
-                result: Color::from_hex("#a6e3a1"),
-                error: Color::from_hex("#f38ba8"),
+                result: Color::from_hex("#ABE9B3"),
+                error: Color::from_hex("#F38BA8"),
             },
             syntax: SyntaxColors {
                 number: Color::from_hex("#cdd6f4"),
-                operator: Color::from_hex("#89dceb"),
-                keyword: Color::from_hex("#cba6f7"),
-                function: Color::from_hex("#89b4fa"),
-                variable: Color::from_hex("#f9e2af"),
-                variable_def: Color::from_hex("#f9e2af"),
-                unit: Color::from_hex("#94e2d5"),
-                currency: Color::from_hex("#a6e3a1"),
-                label: Color::from_hex("#f9e2af"),
+                operator: Color::from_hex("#89DCEB"),
+                keyword: Color::from_hex("#CBA6F7"),
+                function: Color::from_hex("#89B4FA"),
+                variable: Color::from_hex("#FAE3B0"),
+                variable_def: Color::from_hex("#FAE3B0"),
+                unit: Color::from_hex("#B5E8E0"),
+                currency: Color::from_hex("#ABE9B3"),
+                label: Color::from_hex("#FAE3B0"),
                 comment: Color::from_hex("#6c7086"),
-                header: Color::from_hex("#b4befe"),
-                percent: Color::from_hex("#f5c2e7"),
-                string: Color::from_hex("#a6e3a1"),
-                scale: Color::from_hex("#fab387"),
+                header: Color::from_hex("#c7d1ff"),
+                percent: Color::from_hex("#F5C2E7"),
+                string: Color::from_hex("#ABE9B3"),
+                scale: Color::from_hex("#F8BD96"),
             },
         }
     }
@@ -415,6 +447,21 @@ pub fn ensure_default_themes() {
     let latte_path = dir.join("catppuccin-latte.toml");
     if !latte_path.exists() {
         let _ = std::fs::write(&latte_path, ThemeFile::default_latte().to_toml());
+    }
+
+    let bundled: &[(&str, &str)] = &[
+        ("tokyo-night.toml", include_str!("../../../themes/tokyo-night.toml")),
+        ("tokyo-night-day.toml", include_str!("../../../themes/tokyo-night-day.toml")),
+        ("rose-pine-dawn.toml", include_str!("../../../themes/rose-pine-dawn.toml")),
+        ("rose-pine-moon.toml", include_str!("../../../themes/rose-pine-moon.toml")),
+        ("zed-one-dark.toml", include_str!("../../../themes/zed-one-dark.toml")),
+        ("zed-one-light.toml", include_str!("../../../themes/zed-one-light.toml")),
+    ];
+    for (filename, content) in bundled {
+        let path = dir.join(filename);
+        if !path.exists() {
+            let _ = std::fs::write(&path, content);
+        }
     }
 }
 

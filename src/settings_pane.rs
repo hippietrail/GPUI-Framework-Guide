@@ -2,7 +2,7 @@ use gpui::{
     actions, App, Context, FocusHandle, Focusable, MouseButton, MouseUpEvent,
     Render, Window, div, prelude::*, px,
 };
-use numnum_core::config::Settings;
+use numnum_core::config::{Settings, list_themes};
 
 use crate::theme::Theme;
 
@@ -115,6 +115,34 @@ impl SettingsPane {
         cx.notify();
     }
 
+    fn cycle_dark_theme(&mut self, cx: &mut Context<Self>) {
+        let themes = list_themes();
+        let dark_themes: Vec<_> = themes.iter()
+            .filter(|(_, _, appearance)| appearance == "dark")
+            .collect();
+        if dark_themes.is_empty() { return; }
+        let current = &self.settings.appearance.dark_theme;
+        let idx = dark_themes.iter().position(|(stem, _, _)| stem == current).unwrap_or(0);
+        let next = (idx + 1) % dark_themes.len();
+        self.settings.appearance.dark_theme = dark_themes[next].0.clone();
+        self.settings.save();
+        cx.notify();
+    }
+
+    fn cycle_light_theme(&mut self, cx: &mut Context<Self>) {
+        let themes = list_themes();
+        let light_themes: Vec<_> = themes.iter()
+            .filter(|(_, _, appearance)| appearance == "light")
+            .collect();
+        if light_themes.is_empty() { return; }
+        let current = &self.settings.appearance.light_theme;
+        let idx = light_themes.iter().position(|(stem, _, _)| stem == current).unwrap_or(0);
+        let next = (idx + 1) % light_themes.len();
+        self.settings.appearance.light_theme = light_themes[next].0.clone();
+        self.settings.save();
+        cx.notify();
+    }
+
     fn toggle_font_list(&mut self, cx: &mut Context<Self>) {
         self.font_list_open = !self.font_list_open;
         cx.notify();
@@ -191,6 +219,17 @@ impl Render for SettingsPane {
             _ => "Auto",
         };
         let show_diag_val = if settings.editor.show_diagnostics { "Yes" } else { "No" };
+
+        // Theme display names
+        let all_themes = list_themes();
+        let dark_theme_display = all_themes.iter()
+            .find(|(stem, _, _)| stem == &settings.appearance.dark_theme)
+            .map(|(_, name, _)| name.clone())
+            .unwrap_or_else(|| settings.appearance.dark_theme.clone());
+        let light_theme_display = all_themes.iter()
+            .find(|(stem, _, _)| stem == &settings.appearance.light_theme)
+            .map(|(_, name, _)| name.clone())
+            .unwrap_or_else(|| settings.appearance.light_theme.clone());
 
         // Build font list dropdown if open
         let font_list_open = self.font_list_open;
@@ -539,6 +578,44 @@ impl Render for SettingsPane {
                                     MouseButton::Left,
                                     cx.listener(|this, _: &MouseUpEvent, _window, cx| {
                                         this.cycle_appearance_mode(cx);
+                                    }),
+                                ),
+                        ),
+                    )
+                    // Dark Theme (click to cycle)
+                    .child(
+                        setting_row(
+                            &theme,
+                            "Dark Theme",
+                            div()
+                                .id("dark-theme-cycle")
+                                .cursor_pointer()
+                                .text_color(theme.text)
+                                .hover(|s| s.text_color(theme.text_muted))
+                                .child(format!("{} \u{25BE}", dark_theme_display))
+                                .on_mouse_up(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                        this.cycle_dark_theme(cx);
+                                    }),
+                                ),
+                        ),
+                    )
+                    // Light Theme (click to cycle)
+                    .child(
+                        setting_row(
+                            &theme,
+                            "Light Theme",
+                            div()
+                                .id("light-theme-cycle")
+                                .cursor_pointer()
+                                .text_color(theme.text)
+                                .hover(|s| s.text_color(theme.text_muted))
+                                .child(format!("{} \u{25BE}", light_theme_display))
+                                .on_mouse_up(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                        this.cycle_light_theme(cx);
                                     }),
                                 ),
                         ),
