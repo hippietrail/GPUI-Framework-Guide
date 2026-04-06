@@ -302,10 +302,10 @@ impl NumNumApp {
         self.editor.update(cx, |editor, _| {
             editor.font_size = px(self.font_size);
         });
-        // Save to settings
-        let mut settings = Settings::load();
-        settings.editor.font_size = self.font_size;
-        settings.save();
+        // Sync to settings pane + persist
+        self.settings_pane.update(cx, |sp, cx| {
+            sp.update_font_size(self.font_size, cx);
+        });
         cx.notify();
     }
 

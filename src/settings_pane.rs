@@ -56,6 +56,12 @@ impl SettingsPane {
         cx.notify();
     }
 
+    pub fn update_font_size(&mut self, size: f32, cx: &mut Context<Self>) {
+        self.settings.editor.font_size = size.clamp(8.0, 72.0);
+        self.settings.save();
+        cx.notify();
+    }
+
     fn inc_font_size(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.font_size = (self.settings.editor.font_size + 1.0).min(72.0);
         self.settings.save();
