@@ -15,6 +15,7 @@ pub struct ResultsPane {
     results: Vec<LineResult>,
     has_diagnostic: Vec<bool>,
     pub copy_full_precision: bool,
+    pub line_visual_counts: Vec<usize>,
     theme: Theme,
 }
 
@@ -24,6 +25,7 @@ impl ResultsPane {
             results: Vec::new(),
             has_diagnostic: Vec::new(),
             copy_full_precision,
+            line_visual_counts: Vec::new(),
             theme,
         }
     }
@@ -70,9 +72,11 @@ impl Render for ResultsPane {
                     } else {
                         text.clone()
                     };
+                    let visual_count = self.line_visual_counts.get(i).copied().unwrap_or(1);
+                    let row_height = line_height * visual_count as f32;
                     children.push(
                         div()
-                            .h(line_height)
+                            .h(row_height)
                             .w_full()
                             .flex()
                             .items_end()

@@ -5,8 +5,8 @@ use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
     EntityInputHandler, FocusHandle, Focusable, FontWeight, GlobalElementId, Hsla, LayoutId,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point,
-    ShapedLine, SharedString, Style, TextAlign, TextRun, UTF16Selection, UnderlineStyle, Window,
-    actions, div, fill, hsla, point, prelude::*, px, relative, size,
+    SharedString, Style, TextAlign, TextRun, UTF16Selection, UnderlineStyle, Window,
+    WrappedLine, actions, div, fill, hsla, point, prelude::*, px, relative, size,
 };
 use numnum_core::lexer::{Lexer, TokenKind};
 use numnum_core::types::{CurrencyTable, UnitTable};
@@ -68,9 +68,11 @@ pub struct Editor {
     // Per-line diagnostics (error messages shown as inlay below the line)
     pub diagnostics: Vec<Option<String>>,
     // Per-line layout cache (rebuilt each frame)
-    line_layouts: Vec<Option<ShapedLine>>,
+    line_layouts: Vec<Option<WrappedLine>>,
     last_bounds: Option<Bounds<Pixels>>,
     line_height: Pixels,
+    // Per-line visual line count (1 for unwrapped, 2+ for wrapped)
+    pub line_visual_counts: Vec<usize>,
     // Cursor blink: timestamp of last cursor movement
     cursor_last_moved: Instant,
 }
@@ -102,6 +104,7 @@ impl Editor {
             line_layouts: Vec::new(),
             last_bounds: None,
             line_height: px(26.0),
+            line_visual_counts: Vec::new(),
             cursor_last_moved: Instant::now(),
         }
     }
@@ -409,21 +412,31 @@ impl Editor {
             return 0;
         }
 
-        // Determine which line was clicked
+        // Determine which logical line was clicked, accounting for wrapped lines
         let y_offset = position.y - bounds.top();
-        let line_idx = if y_offset < px(0.) {
-            0
-        } else {
-            (y_offset / self.line_height) as usize
-        };
-
         let lines: Vec<&str> = self.content.split('\n').collect();
+
+        let mut line_idx = 0;
+        let mut accumulated_y = px(0.);
+        for (i, &count) in self.line_visual_counts.iter().enumerate() {
+            let line_total_height = self.line_height * count as f32;
+            if y_offset < accumulated_y + line_total_height {
+                line_idx = i;
+                break;
+            }
+            accumulated_y += line_total_height;
+            line_idx = i + 1;
+        }
         let line_idx = line_idx.min(lines.len().saturating_sub(1));
 
-        // Find byte offset within line using shaped line
-        let col: usize = if let Some(Some(shaped)) = self.line_layouts.get(line_idx) {
-            let x: Pixels = position.x - bounds.left();
-            shaped.closest_index_for_x(x)
+        // Find byte offset within line using wrapped line layout
+        let col: usize = if let Some(Some(wrapped)) = self.line_layouts.get(line_idx) {
+            let local_x = position.x - bounds.left();
+            let local_y = y_offset - accumulated_y;
+            let local_pos = point(local_x, local_y);
+            match wrapped.closest_index_for_position(local_pos, self.line_height) {
+                Ok(idx) | Err(idx) => idx,
+            }
         } else {
             0
         };
@@ -675,13 +688,19 @@ impl EntityInputHandler for Editor {
         // Determine which line this range start falls on
         let (line, col_start) = self.line_col_for_offset(range.start);
         let (_, col_end) = self.line_col_for_offset(range.end);
-        let shaped = self.line_layouts.get(line)?.as_ref()?;
-        let y = bounds.top() + self.line_height * line as f32;
+        let wrapped = self.line_layouts.get(line)?.as_ref()?;
+
+        // Compute the y offset accounting for wrapped lines above
+        let y_base: Pixels = self.line_visual_counts.iter().take(line).map(|&c| self.line_height * c as f32).sum();
+
+        let start_pos = wrapped.position_for_index(col_start, self.line_height)?;
+        let end_pos = wrapped.position_for_index(col_end, self.line_height)?;
+
         Some(Bounds::from_corners(
-            point(bounds.left() + shaped.x_for_index(col_start), y),
+            point(bounds.left() + start_pos.x, bounds.top() + y_base + start_pos.y),
             point(
-                bounds.left() + shaped.x_for_index(col_end),
-                y + self.line_height,
+                bounds.left() + end_pos.x,
+                bounds.top() + y_base + end_pos.y + self.line_height,
             ),
         ))
     }
@@ -694,16 +713,29 @@ impl EntityInputHandler for Editor {
     ) -> Option<usize> {
         let bounds = self.last_bounds.as_ref()?;
         let y_offset = point.y - bounds.top();
-        let line_idx = if y_offset < px(0.) {
-            0
-        } else {
-            (y_offset / self.line_height) as usize
-        };
         let lines: Vec<&str> = self.content.split('\n').collect();
+
+        // Find logical line accounting for wrapping
+        let mut line_idx = 0;
+        let mut accumulated_y = px(0.);
+        for (i, &count) in self.line_visual_counts.iter().enumerate() {
+            let line_total_height = self.line_height * count as f32;
+            if y_offset < accumulated_y + line_total_height {
+                line_idx = i;
+                break;
+            }
+            accumulated_y += line_total_height;
+            line_idx = i + 1;
+        }
         let line_idx = line_idx.min(lines.len().saturating_sub(1));
-        let shaped = self.line_layouts.get(line_idx)?.as_ref()?;
-        let x = point.x - bounds.left();
-        let col = shaped.index_for_x(x)?;
+
+        let wrapped = self.line_layouts.get(line_idx)?.as_ref()?;
+        let local_x = point.x - bounds.left();
+        let local_y = y_offset - accumulated_y;
+        let local_pos = gpui::point(local_x, local_y);
+        let col = match wrapped.closest_index_for_position(local_pos, self.line_height) {
+            Ok(idx) | Err(idx) => idx,
+        };
         let utf8_offset = self.offset_for_line_col(line_idx, col);
         Some(self.offset_to_utf16(utf8_offset))
     }
@@ -717,7 +749,8 @@ pub struct EditorLineElement {
 }
 
 pub struct EditorLinePrepaint {
-    line: Option<ShapedLine>,
+    wrapped: Option<WrappedLine>,
+    visual_lines: usize,
     cursor: Option<PaintQuad>,
     selection: Option<PaintQuad>,
     cursor_visible: bool,
@@ -753,9 +786,16 @@ impl Element for EditorLineElement {
     ) -> (LayoutId, Self::RequestLayoutState) {
         let editor = self.editor.read(cx);
         let lh = editor.line_height;
+
+        // Use cached visual line count from previous frame (1-frame delay is imperceptible)
+        let visual_lines = editor.line_visual_counts
+            .get(self.line_index)
+            .copied()
+            .unwrap_or(1);
+
         let mut style = Style::default();
         style.size.width = relative(1.).into();
-        style.size.height = lh.into();
+        style.size.height = (lh * visual_lines as f32).into();
         (window.request_layout(style, [], cx), ())
     }
 
@@ -880,9 +920,19 @@ impl Element for EditorLineElement {
             runs
         };
 
-        let shaped = window
+        let wrap_width = bounds.size.width;
+        let wrapped_lines = window
             .text_system()
-            .shape_line(display_text, font_size, &runs, None);
+            .shape_text(display_text.clone(), font_size, &runs, Some(wrap_width), None)
+            .unwrap_or_else(|_| {
+                // Fallback: shape without wrapping
+                window
+                    .text_system()
+                    .shape_text(display_text, font_size, &runs, None, None)
+                    .unwrap_or_default()
+            });
+        let wrapped = wrapped_lines.into_iter().next().unwrap_or_default();
+        let visual_lines = wrapped.wrap_boundaries().len() + 1;
 
         // Compute selection and cursor for this line
         let line_end = line_start + line_text_owned.len();
@@ -899,48 +949,85 @@ impl Element for EditorLineElement {
             // Cursor
             let cursor_q = if cursor_off >= line_start && cursor_off <= line_end {
                 let local_col = cursor_off - line_start;
-                let x = shaped.x_for_index(local_col);
-                Some(fill(
-                    Bounds::new(
-                        point(bounds.left() + x, bounds.top()),
-                        size(px(2.), lh),
-                    ),
-                    cursor_color,
-                ))
+                if let Some(pos) = wrapped.position_for_index(local_col, lh) {
+                    Some(fill(
+                        Bounds::new(
+                            point(bounds.left() + pos.x, bounds.top() + pos.y),
+                            size(px(2.), lh),
+                        ),
+                        cursor_color,
+                    ))
+                } else {
+                    // Fallback: place cursor at start
+                    Some(fill(
+                        Bounds::new(
+                            point(bounds.left(), bounds.top()),
+                            size(px(2.), lh),
+                        ),
+                        cursor_color,
+                    ))
+                }
             } else {
                 None
             };
             (None, cursor_q)
         } else {
-            // Selection
+            // Selection — draw a simple rect from start to end position
             let sel_start = selected_range.start.max(line_start);
             let sel_end = selected_range.end.min(line_end + 1);
             if sel_start <= line_end && sel_end > line_start {
                 let local_start = sel_start.saturating_sub(line_start);
                 let local_end = (sel_end - line_start).min(line_text_owned.len());
-                let x_start = shaped.x_for_index(local_start);
-                let x_end = if sel_end > line_end {
-                    shaped.width() + px(4.)
-                } else {
-                    shaped.x_for_index(local_end)
-                };
-                (
-                    Some(fill(
-                        Bounds::from_corners(
-                            point(bounds.left() + x_start, bounds.top()),
-                            point(bounds.left() + x_end, bounds.bottom()),
-                        ),
-                        selection_color,
-                    )),
-                    None,
-                )
+                let start_pos = wrapped.position_for_index(local_start, lh);
+                let end_pos = wrapped.position_for_index(local_end, lh);
+
+                match (start_pos, end_pos) {
+                    (Some(sp), Some(ep)) => {
+                        if sp.y == ep.y {
+                            // Selection on the same visual line
+                            let x_end = if sel_end > line_end {
+                                bounds.size.width
+                            } else {
+                                ep.x
+                            };
+                            (
+                                Some(fill(
+                                    Bounds::from_corners(
+                                        point(bounds.left() + sp.x, bounds.top() + sp.y),
+                                        point(bounds.left() + x_end, bounds.top() + sp.y + lh),
+                                    ),
+                                    selection_color,
+                                )),
+                                None,
+                            )
+                        } else {
+                            // Selection spans multiple visual lines — draw from start to
+                            // end of the wrapped area as a simple rectangle for now
+                            (
+                                Some(fill(
+                                    Bounds::from_corners(
+                                        point(bounds.left(), bounds.top() + sp.y),
+                                        point(
+                                            bounds.left() + bounds.size.width,
+                                            bounds.top() + ep.y + lh,
+                                        ),
+                                    ),
+                                    selection_color,
+                                )),
+                                None,
+                            )
+                        }
+                    }
+                    _ => (None, None),
+                }
             } else {
                 (None, None)
             }
         };
 
         EditorLinePrepaint {
-            line: Some(shaped),
+            wrapped: Some(wrapped),
+            visual_lines,
             cursor,
             selection,
             cursor_visible,
@@ -988,8 +1075,9 @@ impl Element for EditorLineElement {
             window.paint_quad(selection);
         }
 
-        let line = prepaint.line.take().unwrap();
-        line.paint(
+        let wrapped = prepaint.wrapped.take().unwrap();
+        let visual_lines = prepaint.visual_lines;
+        wrapped.paint(
             bounds.origin,
             lh,
             TextAlign::Left,
@@ -1006,12 +1094,17 @@ impl Element for EditorLineElement {
             window.paint_quad(cursor);
         }
 
-        // Store the shaped line layout and update editor bounds for hit testing
+        // Store the wrapped line layout, visual line count, and update editor bounds
         self.editor.update(cx, |editor, _| {
             while editor.line_layouts.len() <= self.line_index {
                 editor.line_layouts.push(None);
             }
-            editor.line_layouts[self.line_index] = Some(line);
+            editor.line_layouts[self.line_index] = Some(wrapped);
+
+            while editor.line_visual_counts.len() <= self.line_index {
+                editor.line_visual_counts.push(1);
+            }
+            editor.line_visual_counts[self.line_index] = visual_lines;
 
             // First line sets the editor origin for mouse hit testing
             if self.line_index == 0 {
@@ -1028,6 +1121,8 @@ impl Render for Editor {
         let line_count = self.line_count();
         self.line_height = window.line_height();
         self.line_layouts.clear();
+        // Preserve line_visual_counts from previous frame (used by request_layout for height hints)
+        // They will be overwritten during paint of each line
 
         let entity = cx.entity().clone();
 
@@ -1070,8 +1165,12 @@ impl Render for Editor {
                 let dimmed = self.theme.text_dimmed;
                 let error_color = self.theme.error;
                 let lh = self.line_height;
+                let visual_counts = &self.line_visual_counts;
                 let mut children: Vec<gpui::AnyElement> = Vec::new();
                 for i in 0..line_count {
+                    // Use cached visual line count from previous frame
+                    let visual_lines = visual_counts.get(i).copied().unwrap_or(1);
+                    let row_height = lh * visual_lines as f32;
                     // Row: line number gutter + editor line
                     children.push(
                         div()
@@ -1079,15 +1178,16 @@ impl Render for Editor {
                             .flex_row()
                             .w_full()
                             .child(
-                                // Line number gutter
+                                // Line number gutter — height matches wrapped line height
                                 div()
                                     .w(gutter_w)
-                                    .h(lh)
+                                    .h(row_height)
                                     .flex_shrink_0()
                                     .flex()
-                                    .items_center()
+                                    .items_start()
                                     .justify_end()
                                     .pr(gutter_pad)
+                                    .pt(px(0.))
                                     .text_size(px(12.))
                                     .text_color(dimmed)
                                     .child(format!("{}", i + 1)),

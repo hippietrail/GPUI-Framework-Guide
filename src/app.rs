@@ -3,7 +3,7 @@ use std::sync::{Arc, Mutex};
 
 use gpui::{
     App, Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Render, ScrollHandle, SharedString, Window, div, point, prelude::*, px,
+    MouseUpEvent, Pixels, Render, ScrollHandle, SharedString, Window, div, point, prelude::*, px,
 };
 
 use gpui::relative;
@@ -131,11 +131,13 @@ impl NumNumApp {
             };
 
             // Update editor diagnostics (for inlay rendering)
+            let visual_counts = editor_for_eval.read(cx).line_visual_counts.clone();
             editor_for_eval.update(cx, |editor, _cx| {
                 editor.diagnostics = diagnostics.clone();
             });
 
             results_for_eval.update(cx, |pane, cx| {
+                pane.line_visual_counts = visual_counts;
                 pane.set_results_with_diagnostics(results, &diagnostics, cx);
             });
             status_for_eval.update(cx, |bar, cx| {
@@ -147,7 +149,13 @@ impl NumNumApp {
             if line != last_scroll_line.get() {
                 last_scroll_line.set(line);
                 let approx_line_height = px(font_size * 1.6);
-                let cursor_y = approx_line_height * (line as f32);
+
+                // Compute cursor_y using visual line counts for accuracy with wrapping
+                let visual_counts = &editor_for_eval.read(cx).line_visual_counts;
+                let cursor_y: Pixels = visual_counts.iter().take(line)
+                    .map(|&c| approx_line_height * c as f32)
+                    .sum::<Pixels>();
+
                 let current_offset = scroll_handle_for_eval.offset();
                 let viewport_top = -current_offset.y;
                 // Infer viewport height from scroll handle bounds
@@ -155,8 +163,12 @@ impl NumNumApp {
                 let max_y: f32 = max_offset.y.into();
                 // max_offset.y is the most negative the scroll can go
                 // viewport_height ≈ content_height + max_y (since max_y is negative)
-                let total_lines = editor_for_eval.read(cx).content().split('\n').count();
-                let content_h: f32 = (approx_line_height * (total_lines as f32 + 4.0)).into();
+                let total_visual: usize = if visual_counts.is_empty() {
+                    editor_for_eval.read(cx).content().split('\n').count()
+                } else {
+                    visual_counts.iter().sum()
+                };
+                let content_h: f32 = (approx_line_height * (total_visual as f32 + 4.0)).into();
                 let viewport_height = if max_y < 0.0 {
                     px(content_h + max_y) // content - scrollable range = viewport
                 } else {
@@ -240,13 +252,17 @@ impl Render for NumNumApp {
         let divider_color = self.theme.divider;
         let is_dragging = self.is_dragging_divider;
 
-        // Compute content height from editor line count + diagnostics
+        // Compute content height from editor visual line counts + diagnostics
         let editor = self.editor.read(cx);
-        let line_count = editor.content().split('\n').count();
+        let total_visual: usize = if editor.line_visual_counts.is_empty() {
+            editor.content().split('\n').count()
+        } else {
+            editor.line_visual_counts.iter().sum()
+        };
         let diag_count = editor.diagnostics.iter().filter(|d| d.is_some()).count();
         let line_height = window.line_height();
         let diag_line_height = px(20.0);
-        let content_height = line_height * (line_count as f32) + diag_line_height * (diag_count as f32) + px(100.0); // extra padding at bottom
+        let content_height = line_height * (total_visual as f32) + diag_line_height * (diag_count as f32) + px(100.0); // extra padding at bottom
 
         let split_ratio = self.split_ratio;
         let scroll_handle = self.scroll_handle.clone();
