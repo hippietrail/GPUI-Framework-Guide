@@ -220,6 +220,13 @@ impl Parser {
             return Ok(Expr::WithCurrency { expr: Box::new(expr), currency: id });
         }
 
+        // Check for currency symbol suffix (e.g. "150¥", "100€", "50₹")
+        if let TokenKind::CurrencySymbol(id) = self.peek() {
+            let id = *id;
+            self.advance();
+            return Ok(Expr::WithCurrency { expr: Box::new(expr), currency: id });
+        }
+
         Ok(expr)
     }
 
