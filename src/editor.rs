@@ -798,7 +798,7 @@ impl Element for EditorLineElement {
         let ws = window.text_style();
         let is_header = line_text_owned.starts_with('#');
         let font_size = if is_header {
-            ws.font_size.to_pixels(window.rem_size()) * 1.25
+            ws.font_size.to_pixels(window.rem_size()) * 1.05
         } else {
             ws.font_size.to_pixels(window.rem_size())
         };
