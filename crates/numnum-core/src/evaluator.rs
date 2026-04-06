@@ -1686,3 +1686,29 @@ mod roundtrip_tests {
         assert!(reparsed.is_ok(), "Could not re-parse: {} -> {:?}", formatted, reparsed);
     }
 }
+
+#[cfg(test)]
+mod unicode_tests {
+    use crate::evaluator::EvalContext;
+
+    #[test]
+    fn test_unicode_currency_symbol_input() {
+        let mut ctx = EvalContext::new();
+        // Should not panic on multi-byte characters like ﷼ (3 bytes in UTF-8)
+        let _ = ctx.eval_line("\u{060B}100");
+        let _ = ctx.eval_line("100\u{060B}");
+        let _ = ctx.eval_line("\u{060B})");
+        let _ = ctx.eval_line("hello\u{060B}world");
+    }
+
+    #[test]
+    fn test_various_unicode_input() {
+        let mut ctx = EvalContext::new();
+        // Various Unicode that could appear in paste
+        let _ = ctx.eval_line("caf\u{00E9} + 5");
+        let _ = ctx.eval_line("100 \u{00D7} 5");
+        let _ = ctx.eval_line("50 \u{00F7} 2");
+        let _ = ctx.eval_line("\u{4EF7}\u{683C}: 100");
+        let _ = ctx.eval_line("\u{1F389} + 5");
+    }
+}

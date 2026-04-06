@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::time::Duration;
 
 use numnum_core::config::config_dir;
 
@@ -105,7 +106,11 @@ impl RateCache {
 
     /// Fetch live rates from the API. Returns the rates map on success.
     fn fetch_live_rates(&self) -> Result<HashMap<String, f64>, Box<dyn std::error::Error>> {
-        let body: String = ureq::get(RATES_API).call()?.body_mut().read_to_string()?;
+        let config = ureq::Agent::config_builder()
+            .timeout_global(Some(Duration::from_secs(3)))
+            .build();
+        let agent = ureq::Agent::new_with_config(config);
+        let body: String = agent.get(RATES_API).call()?.body_mut().read_to_string()?;
         let json: serde_json::Value = serde_json::from_str(&body)?;
 
         let result = json

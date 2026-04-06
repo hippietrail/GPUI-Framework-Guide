@@ -86,7 +86,13 @@ impl<'a> Lexer<'a> {
             if let Some(tok) = self.next_token() {
                 tokens.push(tok);
             } else {
-                self.pos += 1; // skip unknown char
+                // Advance past the unknown character by its full UTF-8 width,
+                // not just 1 byte, to avoid landing inside a multi-byte char.
+                if let Some(c) = self.peek_char() {
+                    self.pos += c.len_utf8();
+                } else {
+                    self.pos += 1;
+                }
             }
         }
         tokens.push(Token { kind: TokenKind::Eof, span: self.pos..self.pos });
@@ -125,8 +131,11 @@ impl<'a> Lexer<'a> {
             return Some(tok);
         }
 
-        // Two-char operators
-        if self.pos + 1 < self.input().len() {
+        // Two-char operators (only ASCII pairs, so check that both bytes are ASCII first)
+        if self.pos + 1 < self.input().len()
+            && self.input().as_bytes()[self.pos].is_ascii()
+            && self.input().as_bytes()[self.pos + 1].is_ascii()
+        {
             let two = &self.processed_input[self.pos..self.pos + 2];
             let kind = match two {
                 "<<" => Some(TokenKind::Op(BinOp::Shl)),
@@ -293,18 +302,21 @@ impl<'a> Lexer<'a> {
 
     fn is_word_char_at(&self, pos: usize) -> bool {
         if pos >= self.input().len() { return false; }
-        let b = self.input().as_bytes()[pos];
-        b.is_ascii_alphanumeric() || b == b'_'
+        if !self.input().is_char_boundary(pos) { return false; }
+        match self.input()[pos..].chars().next() {
+            Some(c) => c.is_alphanumeric() || c == '_',
+            None => false,
+        }
     }
 
     fn lex_word(&mut self, start: usize) -> Token {
-        // Consume the full word
+        // Consume the full word (supports Unicode alphabetic characters)
         while self.pos < self.input().len() {
-            let b = self.input().as_bytes()[self.pos];
-            if b.is_ascii_alphanumeric() || b == b'_' || b == b'.' {
-                self.pos += 1;
-            } else {
-                break;
+            match self.input()[self.pos..].chars().next() {
+                Some(c) if c.is_alphanumeric() || c == '_' || c == '.' => {
+                    self.pos += c.len_utf8();
+                }
+                _ => break,
             }
         }
         let word = self.processed_input[start..self.pos].to_string();
@@ -372,7 +384,7 @@ impl<'a> Lexer<'a> {
         }
 
         // Currency lookup (try compound symbol with trailing '$' first: R$, HK$, S$)
-        if self.pos < self.input().len() && self.input().as_bytes()[self.pos] == b'$' {
+        if self.pos < self.input().len() && self.peek_char() == Some('$') {
             let compound = format!("{}$", lower);
             if let Some(id) = self.currency_table.lookup(&compound) {
                 self.pos += 1; // consume the '$'
@@ -581,8 +593,13 @@ impl<'a> Lexer<'a> {
         let saved = self.pos;
         self.skip_whitespace();
         let word_start = self.pos;
-        while self.pos < self.input().len() && self.input().as_bytes()[self.pos].is_ascii_alphanumeric() {
-            self.pos += 1;
+        while self.pos < self.input().len() {
+            match self.input()[self.pos..].chars().next() {
+                Some(c) if c.is_alphanumeric() => {
+                    self.pos += c.len_utf8();
+                }
+                _ => break,
+            }
         }
         let word = &self.processed_input[word_start..self.pos];
         if word.eq_ignore_ascii_case(expected) {
