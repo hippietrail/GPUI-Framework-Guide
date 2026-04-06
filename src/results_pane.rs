@@ -53,6 +53,7 @@ impl Render for ResultsPane {
             .flex_col()
             .w_full()
             .bg(theme.background)
+            .pt(px(12.))  // Match editor top padding
             .children({
                 let mut children: Vec<gpui::AnyElement> = Vec::new();
                 for (i, result) in results.into_iter().enumerate() {
