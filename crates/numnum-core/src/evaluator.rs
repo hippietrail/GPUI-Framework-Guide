@@ -272,11 +272,15 @@ impl EvalContext {
                             _ => Err(EvalError::TypeMismatch("Cannot convert to currency".to_string())),
                         }
                     }
-                    ConversionTarget::Repr(_repr) => {
+                    ConversionTarget::Repr(repr) => {
                         let n = v.as_number().ok_or_else(|| EvalError::TypeMismatch("Repr cast requires number".to_string()))?;
-                        // Repr doesn't change the value, just the display format
-                        // We return a Number and let the formatter handle repr
-                        Ok(Value::Number(n)) // TODO: attach repr info
+                        match repr {
+                            ReprKind::Hex => Ok(Value::NumberRepr(n, NumRepr::Hex)),
+                            ReprKind::Binary => Ok(Value::NumberRepr(n, NumRepr::Binary)),
+                            ReprKind::Octal => Ok(Value::NumberRepr(n, NumRepr::Octal)),
+                            ReprKind::Decimal => Ok(Value::Number(n)),
+                            ReprKind::Scientific => Ok(Value::NumberRepr(n, NumRepr::Scientific)),
+                        }
                     }
                 }
             }

@@ -93,6 +93,15 @@ pub fn format_number_repr(n: f64, repr: NumRepr) -> String {
         NumRepr::Binary => format!("0b{:b}", i),
         NumRepr::Octal => format!("0o{:o}", i),
         NumRepr::Decimal => format_number(n, 2),
+        NumRepr::Scientific => {
+            if n == 0.0 { return "0e0".to_string(); }
+            let exp = n.abs().log10().floor() as i32;
+            let mantissa = n / 10f64.powi(exp);
+            // Format mantissa, trimming trailing zeros
+            let s = format!("{:.6}", mantissa);
+            let s = s.trim_end_matches('0').trim_end_matches('.');
+            format!("{}e{}", s, exp)
+        }
     }
 }
 
