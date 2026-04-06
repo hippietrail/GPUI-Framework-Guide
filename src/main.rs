@@ -26,9 +26,16 @@ fn main() {
     {
         let rates_ref = live_rates.clone();
         std::thread::spawn(move || {
-            if let Some(fresh) = rates::RateCache::new().fetch_and_store() {
-                if let Ok(mut rates) = rates_ref.lock() {
-                    *rates = fresh;
+            match rates::RateCache::new().fetch_and_store() {
+                Some(fresh) => {
+                    let count = fresh.len();
+                    if let Ok(mut rates) = rates_ref.lock() {
+                        *rates = fresh;
+                    }
+                    eprintln!("[INFO] live exchange rates loaded ({} currencies)", count);
+                }
+                None => {
+                    eprintln!("[INFO] could not fetch live rates, using cached data");
                 }
             }
         });
