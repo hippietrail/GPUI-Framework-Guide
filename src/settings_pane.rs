@@ -12,7 +12,7 @@ pub struct SettingsPane {
     pub visible: bool,
     needs_focus: bool,
     settings: Settings,
-    theme: Theme,
+    pub theme: Theme,
     focus_handle: FocusHandle,
     font_list: Vec<String>,
     font_list_open: bool,

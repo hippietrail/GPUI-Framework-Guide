@@ -16,7 +16,7 @@ pub struct ResultsPane {
     has_diagnostic: Vec<bool>,
     pub copy_full_precision: bool,
     pub line_visual_counts: Vec<usize>,
-    theme: Theme,
+    pub theme: Theme,
 }
 
 impl ResultsPane {

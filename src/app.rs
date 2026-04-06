@@ -201,7 +201,10 @@ impl NumNumApp {
 
         // Wire up on_save callback: settings pane -> app
         let results_pane_for_save = results_pane.clone();
+        let editor_for_theme = editor.clone();
+        let status_for_theme = status_bar.clone();
         let settings_pane_clone = settings_pane.clone();
+        let settings_pane_for_theme = settings_pane.clone();
         cx.observe(&settings_pane_clone, move |this, settings_entity, cx| {
             let pane = settings_entity.read(cx);
             let new_settings = pane.current_settings();
@@ -216,10 +219,17 @@ impl NumNumApp {
                 let theme_name = match new_mode.as_str() {
                     "dark" => new_settings.appearance.dark_theme.clone(),
                     "light" => new_settings.appearance.light_theme.clone(),
-                    _ => new_settings.appearance.dark_theme.clone(), // auto defaults to dark for now
+                    _ => new_settings.appearance.dark_theme.clone(),
                 };
                 let tf = numnum_core::ThemeFile::load(&theme_name);
-                this.theme = crate::theme::Theme::from_theme_file(&tf);
+                let new_theme = crate::theme::Theme::from_theme_file(&tf);
+                this.theme = new_theme.clone();
+
+                // Propagate theme to all child components
+                editor_for_theme.update(cx, |ed, _| { ed.theme = new_theme.clone(); });
+                results_pane_for_save.update(cx, |rp, _| { rp.theme = new_theme.clone(); });
+                status_for_theme.update(cx, |sb, _| { sb.theme = new_theme.clone(); });
+                settings_pane_for_theme.update(cx, |sp, _| { sp.theme = new_theme.clone(); });
             }
 
             // Update results pane copy_full_precision

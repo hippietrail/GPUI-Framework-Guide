@@ -8,7 +8,7 @@ pub struct StatusBar {
     line: usize,
     col: usize,
     running_total: String,
-    theme: Theme,
+    pub theme: Theme,
     on_settings_click: Option<Arc<dyn Fn(&mut Window, &mut App)>>,
 }
 

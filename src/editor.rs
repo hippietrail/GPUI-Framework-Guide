@@ -59,7 +59,7 @@ pub struct Editor {
     undo_stack: Vec<UndoEntry>,
     redo_stack: Vec<UndoEntry>,
     on_change: Option<OnChangeFn>,
-    theme: Theme,
+    pub theme: Theme,
     font_family: SharedString,
     font_size: Pixels,
     unit_table: UnitTable,
