@@ -393,58 +393,58 @@ impl EvalContext {
     // Fix #2: convert RHS to LHS unit BEFORE doing arithmetic
     fn eval_binary_op(&self, op: BinOp, lhs: Value, rhs: Value) -> Result<Value, EvalError> {
         // --- Same-dimension units: convert before arithmetic ---
-        if let (Value::WithUnit(ln, lu), Value::WithUnit(rn, ru)) = (&lhs, &rhs) {
-            if let (Some(lu_def), Some(ru_def)) = (self.unit_table.get(*lu), self.unit_table.get(*ru)) {
-                if lu_def.dimension == ru_def.dimension {
-                    if matches!(op, BinOp::Add | BinOp::Sub) {
-                        // For add/sub, pick the unit with the smaller to_base factor
-                        let (target_unit, ln_c, rn_c) = if lu_def.to_base <= ru_def.to_base {
-                            let rn_conv = self.unit_table.convert(*rn, *ru, *lu)
-                                .ok_or(EvalError::IncompatibleUnits)?;
-                            (*lu, *ln, rn_conv)
-                        } else {
-                            let ln_conv = self.unit_table.convert(*ln, *lu, *ru)
-                                .ok_or(EvalError::IncompatibleUnits)?;
-                            (*ru, ln_conv, *rn)
-                        };
-                        let result = match op {
-                            BinOp::Add => ln_c + rn_c,
-                            BinOp::Sub => ln_c - rn_c,
-                            _ => unreachable!(),
-                        };
-                        return Ok(Value::WithUnit(result, target_unit));
-                    }
-                    // For mul/div/mod/pow: convert RHS to LHS unit, compute, keep LHS unit
-                    // Exception: division of same-dimension units returns dimensionless
-                    let rn_converted = self.unit_table.convert(*rn, *ru, *lu)
-                        .ok_or(EvalError::IncompatibleUnits)?;
-                    let result = match op {
-                        BinOp::Mul => *ln * rn_converted,
-                        BinOp::Div => {
-                            if rn_converted == 0.0 { return Err(EvalError::DivisionByZero); }
-                            *ln / rn_converted
-                        }
-                        BinOp::Mod => {
-                            if rn_converted == 0.0 { return Err(EvalError::ModuloByZero); }
-                            *ln % rn_converted
-                        }
-                        BinOp::Pow => ln.powf(rn_converted),
-                        _ => {
-                            // Bitwise ops: fall through to generic path
-                            let ln_n = lhs.as_number().unwrap();
-                            let rn_n = rhs.as_number().unwrap();
-                            return self.eval_plain_op(op, ln_n, rn_n, &lhs, &rhs);
-                        }
+        if let (Value::WithUnit(ln, lu), Value::WithUnit(rn, ru)) = (&lhs, &rhs)
+            && let (Some(lu_def), Some(ru_def)) = (self.unit_table.get(*lu), self.unit_table.get(*ru))
+        {
+            if lu_def.dimension == ru_def.dimension {
+                if matches!(op, BinOp::Add | BinOp::Sub) {
+                    // For add/sub, pick the unit with the smaller to_base factor
+                    let (target_unit, ln_c, rn_c) = if lu_def.to_base <= ru_def.to_base {
+                        let rn_conv = self.unit_table.convert(*rn, *ru, *lu)
+                            .ok_or(EvalError::IncompatibleUnits)?;
+                        (*lu, *ln, rn_conv)
+                    } else {
+                        let ln_conv = self.unit_table.convert(*ln, *lu, *ru)
+                            .ok_or(EvalError::IncompatibleUnits)?;
+                        (*ru, ln_conv, *rn)
                     };
-                    // Division of same-dimension units => dimensionless
-                    if matches!(op, BinOp::Div) {
-                        return Ok(Value::Number(result));
-                    }
-                    return Ok(Value::WithUnit(result, *lu));
-                } else if matches!(op, BinOp::Add | BinOp::Sub) {
-                    // Different dimensions on add/sub => error
-                    return Err(EvalError::IncompatibleUnits);
+                    let result = match op {
+                        BinOp::Add => ln_c + rn_c,
+                        BinOp::Sub => ln_c - rn_c,
+                        _ => unreachable!(),
+                    };
+                    return Ok(Value::WithUnit(result, target_unit));
                 }
+                // For mul/div/mod/pow: convert RHS to LHS unit, compute, keep LHS unit
+                // Exception: division of same-dimension units returns dimensionless
+                let rn_converted = self.unit_table.convert(*rn, *ru, *lu)
+                    .ok_or(EvalError::IncompatibleUnits)?;
+                let result = match op {
+                    BinOp::Mul => *ln * rn_converted,
+                    BinOp::Div => {
+                        if rn_converted == 0.0 { return Err(EvalError::DivisionByZero); }
+                        *ln / rn_converted
+                    }
+                    BinOp::Mod => {
+                        if rn_converted == 0.0 { return Err(EvalError::ModuloByZero); }
+                        *ln % rn_converted
+                    }
+                    BinOp::Pow => ln.powf(rn_converted),
+                    _ => {
+                        // Bitwise ops: fall through to generic path
+                        let ln_n = lhs.as_number().unwrap();
+                        let rn_n = rhs.as_number().unwrap();
+                        return self.eval_plain_op(op, ln_n, rn_n, &lhs, &rhs);
+                    }
+                };
+                // Division of same-dimension units => dimensionless
+                if matches!(op, BinOp::Div) {
+                    return Ok(Value::Number(result));
+                }
+                return Ok(Value::WithUnit(result, *lu));
+            } else if matches!(op, BinOp::Add | BinOp::Sub) {
+                // Different dimensions on add/sub => error
+                return Err(EvalError::IncompatibleUnits);
             }
         }
 
@@ -483,19 +483,16 @@ impl EvalContext {
         }
 
         // For add/sub, reject incompatible types (unit + currency, different dimensions, etc.)
-        if matches!(op, BinOp::Add | BinOp::Sub) {
-            match (&lhs, &rhs) {
-                (Value::WithUnit(_, lu), Value::WithUnit(_, ru)) => {
-                    // Same-dimension case was handled above; if we get here, dimensions differ
-                    let lu_def = self.unit_table.get(*lu);
-                    let ru_def = self.unit_table.get(*ru);
-                    if let (Some(ld), Some(rd)) = (lu_def, ru_def) {
-                        if ld.dimension != rd.dimension {
-                            return Err(EvalError::IncompatibleUnits);
-                        }
-                    }
-                }
-                _ => {}
+        if matches!(op, BinOp::Add | BinOp::Sub)
+            && let (Value::WithUnit(_, lu), Value::WithUnit(_, ru)) = (&lhs, &rhs)
+        {
+            // Same-dimension case was handled above; if we get here, dimensions differ
+            let lu_def = self.unit_table.get(*lu);
+            let ru_def = self.unit_table.get(*ru);
+            if let (Some(ld), Some(rd)) = (lu_def, ru_def)
+                && ld.dimension != rd.dimension
+            {
+                return Err(EvalError::IncompatibleUnits);
             }
         }
 

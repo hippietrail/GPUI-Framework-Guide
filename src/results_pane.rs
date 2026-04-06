@@ -9,7 +9,6 @@ pub enum LineResult {
     None,
     /// display_text, full_precision_copy_text
     Value(String, String),
-    Error(String),
 }
 
 pub struct ResultsPane {
@@ -60,7 +59,6 @@ impl Render for ResultsPane {
                     let (text, color) = match &result {
                         LineResult::None => (String::new(), theme.text_dimmed),
                         LineResult::Value(display, _) => (display.clone(), theme.result),
-                        LineResult::Error(s) => (s.clone(), theme.error),
                     };
 
                     let text_for_copy = if self.copy_full_precision {

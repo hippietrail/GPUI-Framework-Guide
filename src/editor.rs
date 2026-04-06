@@ -1,11 +1,12 @@
 use std::ops::Range;
+use std::time::Instant;
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
-    EntityInputHandler, FocusHandle, Focusable, GlobalElementId, LayoutId, MouseButton,
-    MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point, ShapedLine,
-    SharedString, Style, TextAlign, TextRun, UTF16Selection, UnderlineStyle, Window, actions, div,
-    fill, point, prelude::*, px, relative, size,
+    EntityInputHandler, FocusHandle, Focusable, FontWeight, GlobalElementId, Hsla, LayoutId,
+    MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point,
+    ShapedLine, SharedString, Style, TextAlign, TextRun, UTF16Selection, UnderlineStyle, Window,
+    actions, div, fill, hsla, point, prelude::*, px, relative, size,
 };
 use numnum_core::lexer::{Lexer, TokenKind};
 use numnum_core::types::{CurrencyTable, UnitTable};
@@ -42,6 +43,13 @@ struct UndoEntry {
     selected_range: Range<usize>,
 }
 
+type OnChangeFn = Box<dyn Fn(&str, &mut Window, &mut App)>;
+
+/// Fixed gutter width for line numbers (in px).
+const GUTTER_WIDTH: f32 = 40.0;
+/// Padding between gutter and editor text.
+const GUTTER_PADDING_RIGHT: f32 = 8.0;
+
 pub struct Editor {
     focus_handle: FocusHandle,
     content: String,
@@ -51,7 +59,7 @@ pub struct Editor {
     is_selecting: bool,
     undo_stack: Vec<UndoEntry>,
     redo_stack: Vec<UndoEntry>,
-    on_change: Option<Box<dyn Fn(&str, &mut Window, &mut App)>>,
+    on_change: Option<OnChangeFn>,
     theme: Theme,
     font_family: SharedString,
     font_size: Pixels,
@@ -63,6 +71,8 @@ pub struct Editor {
     line_layouts: Vec<Option<ShapedLine>>,
     last_bounds: Option<Bounds<Pixels>>,
     line_height: Pixels,
+    // Cursor blink: timestamp of last cursor movement
+    cursor_last_moved: Instant,
 }
 
 impl Editor {
@@ -71,7 +81,7 @@ impl Editor {
         theme: Theme,
         font_family: String,
         font_size: f32,
-        on_change: Option<Box<dyn Fn(&str, &mut Window, &mut App)>>,
+        on_change: Option<OnChangeFn>,
     ) -> Self {
         Editor {
             focus_handle: cx.focus_handle(),
@@ -92,6 +102,7 @@ impl Editor {
             line_layouts: Vec::new(),
             last_bounds: None,
             line_height: px(26.0),
+            cursor_last_moved: Instant::now(),
         }
     }
 
@@ -124,10 +135,6 @@ impl Editor {
     }
 
     // --- Line helpers ---
-
-    fn lines(&self) -> Vec<&str> {
-        self.content.split('\n').collect()
-    }
 
     fn line_count(&self) -> usize {
         self.content.split('\n').count()
@@ -350,6 +357,7 @@ impl Editor {
     fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
         self.selected_range = offset..offset;
         self.selection_reversed = false;
+        self.cursor_last_moved = Instant::now();
         cx.notify();
     }
 
@@ -371,6 +379,7 @@ impl Editor {
             self.selection_reversed = !self.selection_reversed;
             self.selected_range = self.selected_range.end..self.selected_range.start;
         }
+        self.cursor_last_moved = Instant::now();
         cx.notify();
     }
 
@@ -613,6 +622,7 @@ impl EntityInputHandler for Editor {
         let new_pos = range.start + new_text.len();
         self.selected_range = new_pos..new_pos;
         self.marked_range.take();
+        self.cursor_last_moved = Instant::now();
         self.fire_change(window, cx);
         cx.notify();
     }
@@ -710,6 +720,9 @@ pub struct EditorLinePrepaint {
     line: Option<ShapedLine>,
     cursor: Option<PaintQuad>,
     selection: Option<PaintQuad>,
+    cursor_visible: bool,
+    is_cursor_line: bool,
+    active_line_bg: Hsla,
 }
 
 impl IntoElement for EditorLineElement {
@@ -756,7 +769,7 @@ impl Element for EditorLineElement {
         cx: &mut App,
     ) -> Self::PrepaintState {
         // Extract everything we need from the editor, then drop the borrow
-        let (line_text_owned, theme_text, selected_range, cursor_off, line_start, marked_range, lh) = {
+        let (line_text_owned, theme_text, selected_range, cursor_off, line_start, marked_range, lh, cursor_last_moved) = {
             let editor = self.editor.read(cx);
             let lines: Vec<&str> = editor.content.split('\n').collect();
             let lt = lines.get(self.line_index).copied().unwrap_or("").to_string();
@@ -769,15 +782,35 @@ impl Element for EditorLineElement {
                 ls,
                 editor.marked_range.clone(),
                 editor.line_height,
+                editor.cursor_last_moved,
             )
         };
 
+        // Cursor blink: visible for 500ms, hidden for 500ms
+        let elapsed_ms = cursor_last_moved.elapsed().as_millis();
+        let cursor_visible = (elapsed_ms % 1000) < 500;
+
+        // Check if this line is the cursor line (for active line highlight)
+        let line_end_for_cursor = line_start + line_text_owned.len();
+        let is_cursor_line = cursor_off >= line_start && cursor_off <= line_end_for_cursor;
+        let active_line_bg = hsla(0.0, 0.0, 1.0, 0.03);
+
         let ws = window.text_style();
-        let font_size = ws.font_size.to_pixels(window.rem_size());
+        let is_header = line_text_owned.starts_with('#');
+        let font_size = if is_header {
+            ws.font_size.to_pixels(window.rem_size()) * 1.25
+        } else {
+            ws.font_size.to_pixels(window.rem_size())
+        };
+
+        let mut base_font = ws.font();
+        if is_header {
+            base_font.weight = FontWeight::BOLD;
+        }
 
         let base_run = TextRun {
             len: 0,
-            font: ws.font(),
+            font: base_font,
             color: theme_text,
             background_color: None,
             underline: None,
@@ -910,6 +943,9 @@ impl Element for EditorLineElement {
             line: Some(shaped),
             cursor,
             selection,
+            cursor_visible,
+            is_cursor_line,
+            active_line_bg,
         }
     }
 
@@ -943,6 +979,11 @@ impl Element for EditorLineElement {
             );
         }
 
+        // Active line highlight
+        if prepaint.is_cursor_line && is_focused {
+            window.paint_quad(fill(bounds, prepaint.active_line_bg));
+        }
+
         if let Some(selection) = prepaint.selection.take() {
             window.paint_quad(selection);
         }
@@ -958,10 +999,11 @@ impl Element for EditorLineElement {
         )
         .unwrap();
 
-        if is_focused {
-            if let Some(cursor) = prepaint.cursor.take() {
-                window.paint_quad(cursor);
-            }
+        if is_focused
+            && prepaint.cursor_visible
+            && let Some(cursor) = prepaint.cursor.take()
+        {
+            window.paint_quad(cursor);
         }
 
         // Store the shaped line layout back
@@ -1018,25 +1060,54 @@ impl Render for Editor {
             .text_size(self.font_size)
             .text_color(self.theme.text)
             .children({
+                let gutter_w = px(GUTTER_WIDTH);
+                let gutter_pad = px(GUTTER_PADDING_RIGHT);
+                let dimmed = self.theme.text_dimmed;
+                let error_color = self.theme.error;
+                let lh = self.line_height;
                 let mut children: Vec<gpui::AnyElement> = Vec::new();
                 for i in 0..line_count {
-                    // The editor line itself
+                    // Row: line number gutter + editor line
                     children.push(
-                        EditorLineElement {
-                            editor: entity.clone(),
-                            line_index: i,
-                        }
-                        .into_any_element(),
+                        div()
+                            .flex()
+                            .flex_row()
+                            .w_full()
+                            .child(
+                                // Line number gutter
+                                div()
+                                    .w(gutter_w)
+                                    .h(lh)
+                                    .flex_shrink_0()
+                                    .flex()
+                                    .items_center()
+                                    .justify_end()
+                                    .pr(gutter_pad)
+                                    .text_size(px(12.))
+                                    .text_color(dimmed)
+                                    .child(format!("{}", i + 1)),
+                            )
+                            .child(
+                                // The editor line itself
+                                div()
+                                    .flex_1()
+                                    .min_w_0()
+                                    .child(EditorLineElement {
+                                        editor: entity.clone(),
+                                        line_index: i,
+                                    }),
+                            )
+                            .into_any_element(),
                     );
                     // Inlay diagnostic below error lines
                     if let Some(Some(diag)) = self.diagnostics.get(i) {
                         children.push(
                             div()
                                 .w_full()
-                                .px(px(4.))
+                                .pl(gutter_w + gutter_pad)
                                 .py(px(2.))
                                 .text_size(px(12.))
-                                .text_color(self.theme.error)
+                                .text_color(error_color)
                                 .child(diag.clone())
                                 .into_any_element(),
                         );
@@ -1053,7 +1124,3 @@ impl Focusable for Editor {
     }
 }
 
-/// Store editor overall bounds after layout. Called from app.
-pub fn store_editor_bounds(editor: &mut Editor, bounds: Bounds<Pixels>) {
-    editor.last_bounds = Some(bounds);
-}

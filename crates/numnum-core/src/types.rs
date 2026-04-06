@@ -594,11 +594,11 @@ impl CurrencyTable {
     /// If the code exists, its `rate_to_usd` is updated and `true` is returned.
     /// If the code is not found, returns `false` (no new currency is inserted).
     pub fn update_rate(&mut self, code: &str, rate_to_usd: f64) -> bool {
-        if let Some(&id) = self.name_to_id.get(&code.to_lowercase()) {
-            if let Some(def) = self.currencies.get_mut(id.0 as usize) {
-                def.rate_to_usd = rate_to_usd;
-                return true;
-            }
+        if let Some(&id) = self.name_to_id.get(&code.to_lowercase())
+            && let Some(def) = self.currencies.get_mut(id.0 as usize)
+        {
+            def.rate_to_usd = rate_to_usd;
+            return true;
         }
         false
     }
