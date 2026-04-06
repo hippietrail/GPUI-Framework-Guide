@@ -1190,8 +1190,7 @@ impl Render for Editor {
                                     .items_end()
                                     .justify_end()
                                     .pr(gutter_pad)
-                                    .pb(px(4.))
-                                    .text_size(px(12.))
+                                    .text_size(self.font_size)
                                     .text_color(dimmed)
                                     .child(format!("{}", i + 1)),
                             )
