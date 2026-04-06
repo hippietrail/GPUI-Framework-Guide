@@ -241,9 +241,19 @@ impl EvalContext {
                     FuncKind::Sin => trig_input.sin(),
                     FuncKind::Cos => trig_input.cos(),
                     FuncKind::Tan => trig_input.tan(),
-                    FuncKind::Asin => n.asin(),
-                    FuncKind::Acos => n.acos(),
-                    FuncKind::Atan => n.atan(),
+                    FuncKind::Asin | FuncKind::Acos | FuncKind::Atan => {
+                        let result = match func {
+                            FuncKind::Asin => n.asin(),
+                            FuncKind::Acos => n.acos(),
+                            FuncKind::Atan => n.atan(),
+                            _ => unreachable!(),
+                        };
+                        // Inverse trig returns radians
+                        if let Some(rad_id) = self.unit_table.lookup("rad") {
+                            return Ok(Value::WithUnit(result, rad_id));
+                        }
+                        return Ok(Value::Number(result));
+                    }
                     FuncKind::Sinh => n.sinh(),
                     FuncKind::Cosh => n.cosh(),
                     FuncKind::Tanh => n.tanh(),
