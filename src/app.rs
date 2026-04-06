@@ -207,8 +207,21 @@ impl NumNumApp {
             let new_settings = pane.current_settings();
             this.precision = new_settings.editor.precision;
             this.font_size = new_settings.editor.font_size;
-            this.appearance_mode = new_settings.appearance.mode.clone();
             this.show_diagnostics = new_settings.editor.show_diagnostics;
+
+            // Reload theme if appearance mode changed
+            let new_mode = new_settings.appearance.mode.clone();
+            if new_mode != this.appearance_mode {
+                this.appearance_mode = new_mode.clone();
+                let theme_name = match new_mode.as_str() {
+                    "dark" => new_settings.appearance.dark_theme.clone(),
+                    "light" => new_settings.appearance.light_theme.clone(),
+                    _ => new_settings.appearance.dark_theme.clone(), // auto defaults to dark for now
+                };
+                let tf = numnum_core::ThemeFile::load(&theme_name);
+                this.theme = crate::theme::Theme::from_theme_file(&tf);
+            }
+
             // Update results pane copy_full_precision
             let copy_fp = new_settings.editor.copy_full_precision;
             results_pane_for_save.update(cx, |rp, cx| {

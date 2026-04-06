@@ -119,8 +119,10 @@ fn main() {
 
                     // If auto mode, resolve the theme based on window appearance
                     let actual_theme = if appearance_mode == "auto" {
+                        let appearance = window.appearance();
+                        eprintln!("[INFO] system appearance: {:?}", appearance);
                         let is_dark = matches!(
-                            window.appearance(),
+                            appearance,
                             WindowAppearance::Dark | WindowAppearance::VibrantDark
                         );
                         let name = if is_dark { &dark_theme_name } else { &light_theme_name };
