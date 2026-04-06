@@ -261,8 +261,8 @@ impl Render for NumNumApp {
         };
         let diag_count = editor.diagnostics.iter().filter(|d| d.is_some()).count();
         let line_height = window.line_height();
-        let diag_line_height = px(20.0);
-        let content_height = line_height * (total_visual as f32) + diag_line_height * (diag_count as f32) + px(100.0); // extra padding at bottom
+        let diag_line_height = line_height * 0.8; // proportional to line height
+        let content_height = line_height * (total_visual as f32) + diag_line_height * (diag_count as f32) + line_height * 4.0; // padding at bottom
 
         let split_ratio = self.split_ratio;
         let scroll_handle = self.scroll_handle.clone();

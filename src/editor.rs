@@ -45,10 +45,10 @@ struct UndoEntry {
 
 type OnChangeFn = Box<dyn Fn(&str, &mut Window, &mut App)>;
 
-/// Fixed gutter width for line numbers (in px).
-const GUTTER_WIDTH: f32 = 40.0;
-/// Padding between gutter and editor text.
-const GUTTER_PADDING_RIGHT: f32 = 8.0;
+/// Gutter width as a multiple of font size (2.5x font_size ≈ room for 3 digits).
+const GUTTER_WIDTH_FACTOR: f32 = 2.5;
+/// Gutter padding as a fraction of font size.
+const GUTTER_PADDING_FACTOR: f32 = 0.5;
 
 pub struct Editor {
     focus_handle: FocusHandle,
@@ -1145,13 +1145,13 @@ impl Render for Editor {
             .on_mouse_move(cx.listener(Self::on_mouse_move))
             .size_full()
             .bg(self.theme.editor_background)
-            .p(px(12.))
+            .p(self.font_size * 0.75)
             .font_family(self.font_family.clone())
             .text_size(self.font_size)
             .text_color(self.theme.text)
             .children({
-                let gutter_w = px(GUTTER_WIDTH);
-                let gutter_pad = px(GUTTER_PADDING_RIGHT);
+                let gutter_w = self.font_size * GUTTER_WIDTH_FACTOR;
+                let gutter_pad = self.font_size * GUTTER_PADDING_FACTOR;
                 let dimmed = self.theme.text_dimmed;
                 let error_color = self.theme.error;
                 let lh = self.line_height;
@@ -1213,7 +1213,7 @@ impl Render for Editor {
                                 .w_full()
                                 .pl(gutter_w + gutter_pad)
                                 .py(px(2.))
-                                .text_size(px(12.))
+                                .text_size(self.font_size * 0.75)
                                 .text_color(error_color)
                                 .child(diag.clone())
                                 .into_any_element(),

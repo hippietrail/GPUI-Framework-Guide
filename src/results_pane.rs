@@ -55,7 +55,7 @@ impl Render for ResultsPane {
             .flex_col()
             .w_full()
             .bg(theme.background)
-            .pt(px(12.))  // Match editor top padding
+            .pt(window.rem_size() * 0.75)  // Match editor top padding (font_size * 0.75)
             .children({
                 let mut children: Vec<gpui::AnyElement> = Vec::new();
                 for (i, result) in results.into_iter().enumerate() {
@@ -105,7 +105,7 @@ impl Render for ResultsPane {
                         children.push(
                             div()
                                 .w_full()
-                                .h(px(18.)) // approximate height of diagnostic text
+                                .h(line_height * 0.8) // proportional diagnostic spacer
                                 .into_any_element(),
                         );
                     }
