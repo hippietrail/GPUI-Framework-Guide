@@ -1307,11 +1307,19 @@
       "required": true,
       "types": [
         {
+          "type": "currency_code",
+          "named": true
+        },
+        {
           "type": "number",
           "named": true
         },
         {
           "type": "scale",
+          "named": true
+        },
+        {
+          "type": "unit_identifier",
           "named": true
         }
       ]
@@ -1567,7 +1575,75 @@
     "named": false
   },
   {
+    "type": "AFN",
+    "named": false
+  },
+  {
+    "type": "ALL",
+    "named": false
+  },
+  {
+    "type": "AMD",
+    "named": false
+  },
+  {
+    "type": "ANG",
+    "named": false
+  },
+  {
+    "type": "AOA",
+    "named": false
+  },
+  {
+    "type": "ARS",
+    "named": false
+  },
+  {
     "type": "AUD",
+    "named": false
+  },
+  {
+    "type": "AWG",
+    "named": false
+  },
+  {
+    "type": "AZN",
+    "named": false
+  },
+  {
+    "type": "BAM",
+    "named": false
+  },
+  {
+    "type": "BBD",
+    "named": false
+  },
+  {
+    "type": "BDT",
+    "named": false
+  },
+  {
+    "type": "BGN",
+    "named": false
+  },
+  {
+    "type": "BHD",
+    "named": false
+  },
+  {
+    "type": "BIF",
+    "named": false
+  },
+  {
+    "type": "BMD",
+    "named": false
+  },
+  {
+    "type": "BND",
+    "named": false
+  },
+  {
+    "type": "BOB",
     "named": false
   },
   {
@@ -1575,7 +1651,27 @@
     "named": false
   },
   {
+    "type": "BSD",
+    "named": false
+  },
+  {
     "type": "BTC",
+    "named": false
+  },
+  {
+    "type": "BTN",
+    "named": false
+  },
+  {
+    "type": "BWP",
+    "named": false
+  },
+  {
+    "type": "BYN",
+    "named": false
+  },
+  {
+    "type": "BZD",
     "named": false
   },
   {
@@ -1587,7 +1683,23 @@
     "named": false
   },
   {
+    "type": "CDF",
+    "named": false
+  },
+  {
     "type": "CHF",
+    "named": false
+  },
+  {
+    "type": "CLF",
+    "named": false
+  },
+  {
+    "type": "CLP",
+    "named": false
+  },
+  {
+    "type": "CNH",
     "named": false
   },
   {
@@ -1595,11 +1707,51 @@
     "named": false
   },
   {
+    "type": "COP",
+    "named": false
+  },
+  {
+    "type": "CRC",
+    "named": false
+  },
+  {
+    "type": "CUP",
+    "named": false
+  },
+  {
+    "type": "CVE",
+    "named": false
+  },
+  {
     "type": "CZK",
     "named": false
   },
   {
+    "type": "DJF",
+    "named": false
+  },
+  {
     "type": "DKK",
+    "named": false
+  },
+  {
+    "type": "DOP",
+    "named": false
+  },
+  {
+    "type": "DZD",
+    "named": false
+  },
+  {
+    "type": "EGP",
+    "named": false
+  },
+  {
+    "type": "ERN",
+    "named": false
+  },
+  {
+    "type": "ETB",
     "named": false
   },
   {
@@ -1611,7 +1763,51 @@
     "named": false
   },
   {
+    "type": "FJD",
+    "named": false
+  },
+  {
+    "type": "FKP",
+    "named": false
+  },
+  {
+    "type": "FOK",
+    "named": false
+  },
+  {
     "type": "GBP",
+    "named": false
+  },
+  {
+    "type": "GEL",
+    "named": false
+  },
+  {
+    "type": "GGP",
+    "named": false
+  },
+  {
+    "type": "GHS",
+    "named": false
+  },
+  {
+    "type": "GIP",
+    "named": false
+  },
+  {
+    "type": "GMD",
+    "named": false
+  },
+  {
+    "type": "GNF",
+    "named": false
+  },
+  {
+    "type": "GTQ",
+    "named": false
+  },
+  {
+    "type": "GYD",
     "named": false
   },
   {
@@ -1619,7 +1815,23 @@
     "named": false
   },
   {
+    "type": "HNL",
+    "named": false
+  },
+  {
+    "type": "HRK",
+    "named": false
+  },
+  {
+    "type": "HTG",
+    "named": false
+  },
+  {
     "type": "HUF",
+    "named": false
+  },
+  {
+    "type": "IDR",
     "named": false
   },
   {
@@ -1627,7 +1839,35 @@
     "named": false
   },
   {
+    "type": "IMP",
+    "named": false
+  },
+  {
     "type": "INR",
+    "named": false
+  },
+  {
+    "type": "IQD",
+    "named": false
+  },
+  {
+    "type": "IRR",
+    "named": false
+  },
+  {
+    "type": "ISK",
+    "named": false
+  },
+  {
+    "type": "JEP",
+    "named": false
+  },
+  {
+    "type": "JMD",
+    "named": false
+  },
+  {
+    "type": "JOD",
     "named": false
   },
   {
@@ -1635,7 +1875,107 @@
     "named": false
   },
   {
+    "type": "KES",
+    "named": false
+  },
+  {
+    "type": "KGS",
+    "named": false
+  },
+  {
+    "type": "KHR",
+    "named": false
+  },
+  {
+    "type": "KID",
+    "named": false
+  },
+  {
+    "type": "KMF",
+    "named": false
+  },
+  {
     "type": "KRW",
+    "named": false
+  },
+  {
+    "type": "KWD",
+    "named": false
+  },
+  {
+    "type": "KYD",
+    "named": false
+  },
+  {
+    "type": "KZT",
+    "named": false
+  },
+  {
+    "type": "LAK",
+    "named": false
+  },
+  {
+    "type": "LBP",
+    "named": false
+  },
+  {
+    "type": "LKR",
+    "named": false
+  },
+  {
+    "type": "LRD",
+    "named": false
+  },
+  {
+    "type": "LSL",
+    "named": false
+  },
+  {
+    "type": "LYD",
+    "named": false
+  },
+  {
+    "type": "MAD",
+    "named": false
+  },
+  {
+    "type": "MDL",
+    "named": false
+  },
+  {
+    "type": "MGA",
+    "named": false
+  },
+  {
+    "type": "MKD",
+    "named": false
+  },
+  {
+    "type": "MMK",
+    "named": false
+  },
+  {
+    "type": "MNT",
+    "named": false
+  },
+  {
+    "type": "MOP",
+    "named": false
+  },
+  {
+    "type": "MRU",
+    "named": false
+  },
+  {
+    "type": "MUR",
+    "named": false
+  },
+  {
+    "type": "MVR",
+    "named": false
+  },
+  {
+    "type": "MWK",
     "named": false
   },
   {
@@ -1643,7 +1983,27 @@
     "named": false
   },
   {
+    "type": "MYR",
+    "named": false
+  },
+  {
+    "type": "MZN",
+    "named": false
+  },
+  {
     "type": "Million",
+    "named": false
+  },
+  {
+    "type": "NAD",
+    "named": false
+  },
+  {
+    "type": "NGN",
+    "named": false
+  },
+  {
+    "type": "NIO",
     "named": false
   },
   {
@@ -1651,7 +2011,35 @@
     "named": false
   },
   {
+    "type": "NPR",
+    "named": false
+  },
+  {
     "type": "NZD",
+    "named": false
+  },
+  {
+    "type": "OMR",
+    "named": false
+  },
+  {
+    "type": "PAB",
+    "named": false
+  },
+  {
+    "type": "PEN",
+    "named": false
+  },
+  {
+    "type": "PGK",
+    "named": false
+  },
+  {
+    "type": "PHP",
+    "named": false
+  },
+  {
+    "type": "PKR",
     "named": false
   },
   {
@@ -1659,11 +2047,43 @@
     "named": false
   },
   {
+    "type": "PYG",
+    "named": false
+  },
+  {
+    "type": "QAR",
+    "named": false
+  },
+  {
+    "type": "RON",
+    "named": false
+  },
+  {
+    "type": "RSD",
+    "named": false
+  },
+  {
     "type": "RUB",
     "named": false
   },
   {
+    "type": "RWF",
+    "named": false
+  },
+  {
     "type": "SAR",
+    "named": false
+  },
+  {
+    "type": "SBD",
+    "named": false
+  },
+  {
+    "type": "SCR",
+    "named": false
+  },
+  {
+    "type": "SDG",
     "named": false
   },
   {
@@ -1675,11 +2095,79 @@
     "named": false
   },
   {
+    "type": "SHP",
+    "named": false
+  },
+  {
+    "type": "SLE",
+    "named": false
+  },
+  {
+    "type": "SLL",
+    "named": false
+  },
+  {
+    "type": "SOS",
+    "named": false
+  },
+  {
+    "type": "SRD",
+    "named": false
+  },
+  {
+    "type": "SSP",
+    "named": false
+  },
+  {
+    "type": "STN",
+    "named": false
+  },
+  {
+    "type": "SYP",
+    "named": false
+  },
+  {
+    "type": "SZL",
+    "named": false
+  },
+  {
     "type": "THB",
     "named": false
   },
   {
+    "type": "TJS",
+    "named": false
+  },
+  {
+    "type": "TMT",
+    "named": false
+  },
+  {
+    "type": "TND",
+    "named": false
+  },
+  {
+    "type": "TOP",
+    "named": false
+  },
+  {
     "type": "TRY",
+    "named": false
+  },
+  {
+    "type": "TTD",
+    "named": false
+  },
+  {
+    "type": "TVD",
+    "named": false
+  },
+  {
+    "type": "TWD",
+    "named": false
+  },
+  {
+    "type": "TZS",
     "named": false
   },
   {
@@ -1691,11 +2179,79 @@
     "named": false
   },
   {
+    "type": "UGX",
+    "named": false
+  },
+  {
     "type": "USD",
     "named": false
   },
   {
+    "type": "UYU",
+    "named": false
+  },
+  {
+    "type": "UZS",
+    "named": false
+  },
+  {
+    "type": "VES",
+    "named": false
+  },
+  {
+    "type": "VND",
+    "named": false
+  },
+  {
+    "type": "VUV",
+    "named": false
+  },
+  {
+    "type": "WST",
+    "named": false
+  },
+  {
+    "type": "XAF",
+    "named": false
+  },
+  {
+    "type": "XCD",
+    "named": false
+  },
+  {
+    "type": "XCG",
+    "named": false
+  },
+  {
+    "type": "XDR",
+    "named": false
+  },
+  {
+    "type": "XOF",
+    "named": false
+  },
+  {
+    "type": "XPF",
+    "named": false
+  },
+  {
+    "type": "YER",
+    "named": false
+  },
+  {
     "type": "ZAR",
+    "named": false
+  },
+  {
+    "type": "ZMW",
+    "named": false
+  },
+  {
+    "type": "ZWG",
+    "named": false
+  },
+  {
+    "type": "ZWL",
     "named": false
   },
   {
@@ -1915,6 +2471,10 @@
     "named": false
   },
   {
+    "type": "milliards",
+    "named": false
+  },
+  {
     "type": "million",
     "named": false
   },
@@ -2007,6 +2567,22 @@
     "named": false
   },
   {
+    "type": "quadrillion",
+    "named": false
+  },
+  {
+    "type": "quadrillions",
+    "named": false
+  },
+  {
+    "type": "quintillion",
+    "named": false
+  },
+  {
+    "type": "quintillions",
+    "named": false
+  },
+  {
     "type": "round",
     "named": false
   },
@@ -2016,6 +2592,22 @@
   },
   {
     "type": "scientific",
+    "named": false
+  },
+  {
+    "type": "septillion",
+    "named": false
+  },
+  {
+    "type": "septillions",
+    "named": false
+  },
+  {
+    "type": "sextillion",
+    "named": false
+  },
+  {
+    "type": "sextillions",
     "named": false
   },
   {
@@ -2079,6 +2671,14 @@
     "named": false
   },
   {
+    "type": "trillion",
+    "named": false
+  },
+  {
+    "type": "trillions",
+    "named": false
+  },
+  {
     "type": "unit_identifier",
     "named": true
   },
@@ -2115,7 +2715,35 @@
     "named": false
   },
   {
+    "type": "ƒ",
+    "named": false
+  },
+  {
+    "type": "֏",
+    "named": false
+  },
+  {
+    "type": "৳",
+    "named": false
+  },
+  {
     "type": "฿",
+    "named": false
+  },
+  {
+    "type": "៛",
+    "named": false
+  },
+  {
+    "type": "₡",
+    "named": false
+  },
+  {
+    "type": "₦",
+    "named": false
+  },
+  {
+    "type": "₨",
     "named": false
   },
   {
@@ -2127,11 +2755,35 @@
     "named": false
   },
   {
+    "type": "₫",
+    "named": false
+  },
+  {
     "type": "€",
     "named": false
   },
   {
+    "type": "₭",
+    "named": false
+  },
+  {
+    "type": "₮",
+    "named": false
+  },
+  {
+    "type": "₱",
+    "named": false
+  },
+  {
+    "type": "₲",
+    "named": false
+  },
+  {
     "type": "₴",
+    "named": false
+  },
+  {
+    "type": "₸",
     "named": false
   },
   {
@@ -2143,7 +2795,15 @@
     "named": false
   },
   {
+    "type": "₼",
+    "named": false
+  },
+  {
     "type": "₽",
+    "named": false
+  },
+  {
+    "type": "₾",
     "named": false
   },
   {

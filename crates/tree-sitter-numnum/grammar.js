@@ -5,6 +5,10 @@ module.exports = grammar({
 
   extras: $ => [/[ \t]/],
 
+  conflicts: $ => [
+    [$.scaled_number],
+  ],
+
   rules: {
     document: $ => repeat($.line),
 
@@ -187,17 +191,28 @@ module.exports = grammar({
     number_with_unit: $ => prec(20, seq($.number, $.unit_identifier)),
 
     currency_value: $ => prec(20, choice(
-      seq($.currency_symbol, $.number),
-      seq($.number, $.currency_symbol),
-      seq($.number, $.currency_code),
+      seq($.currency_symbol, $.number),    // $10, €50 — prefix symbol
+      seq($.number, $.currency_symbol),    // 10$, 50€ — suffix symbol
+      seq($.currency_code, $.number),      // INR 50, USD 100 — prefix code
+      seq($.number, $.currency_code),      // 50 INR, 100 USD — suffix code
     )),
 
-    scaled_number: $ => prec(20, seq($.number, $.scale)),
+    // Scale + unit/currency combo: "107 billion USD", "5 trillion yen"
+    scaled_number: $ => prec(20, seq(
+      $.number,
+      $.scale,
+      optional(choice($.unit_identifier, $.currency_code)),
+    )),
 
     scale: $ => choice(
       "k", "thousand", "Thousand", "thousands",
       "million", "Million", "millions",
-      "billion", "Billion", "milliard",
+      "billion", "Billion", "milliard", "milliards",
+      "trillion", "trillions",
+      "quadrillion", "quadrillions",
+      "quintillion", "quintillions",
+      "sextillion", "sextillions",
+      "septillion", "septillions",
       "th", "th.",
     ),
 
@@ -234,13 +249,53 @@ module.exports = grammar({
     currency_symbol: $ => choice(
       "$", "\u20AC", "\u00A3", "\u00A5", "\u20BD", "\u20AA",
       "\u20B9", "\u20A9", "\u20B4", "\u20BF", "\u20BA", "\u0E3F",
+      "\u20B1", // ₱ PHP
+      "\u20A6", // ₦ NGN
+      "\u20AB", // ₫ VND
+      "\u20A8", // ₨ PKR
+      "\u09F3", // ৳ BDT
+      "\u20B8", // ₸ KZT
+      "\u20BC", // ₼ AZN
+      "\u20BE", // ₾ GEL
+      "\u058F", // ֏ AMD
+      "\u17DB", // ៛ KHR
+      "\u20AD", // ₭ LAK
+      "\u20AE", // ₮ MNT
+      "\u20A1", // ₡ CRC
+      "\u20B2", // ₲ PYG
+      "\u0192", // ƒ ANG
     ),
 
     currency_code: $ => choice(
+      // Major fiat
       "USD", "EUR", "GBP", "JPY", "CHF", "CAD", "AUD", "NZD", "CNY",
-      "INR", "KRW", "RUB", "BRL", "MXN", "ZAR", "SEK", "NOK", "DKK",
-      "PLN", "CZK", "HUF", "TRY", "SGD", "HKD", "THB", "AED", "SAR",
-      "ILS", "UAH", "BTC", "ETH",
+      // Asia-Pacific
+      "INR", "KRW", "HKD", "SGD", "TWD", "THB", "MYR", "IDR", "PHP",
+      "VND", "KHR", "LAK", "MMK", "MNT", "KZT", "KGS", "UZS",
+      "TJS", "TMT", "BDT", "LKR", "NPR", "PKR", "BTN", "MVR", "BND",
+      "PGK", "FJD", "WST", "VUV", "TOP", "SBD", "MOP", "CNH", "KID",
+      "TVD", "AFN",
+      // Europe
+      "SEK", "NOK", "DKK", "PLN", "CZK", "HUF", "RON", "BGN", "HRK",
+      "RSD", "RUB", "UAH", "BYN", "MDL", "GEL", "AZN", "AMD",
+      "TRY", "ISK", "BAM", "MKD", "ALL", "FOK", "GGP", "GIP", "IMP", "JEP",
+      // Americas
+      "MXN", "BRL", "ARS", "CLP", "COP", "PEN", "UYU", "PYG", "BOB",
+      "VES", "GYD", "SRD", "CRC", "NIO", "HNL", "GTQ", "BZD", "DOP",
+      "CUP", "JMD", "HTG", "BSD", "BBD", "TTD", "KYD", "BMD", "XCD",
+      "PAB", "ANG", "AWG", "XCG", "CLF",
+      // Middle East
+      "AED", "SAR", "QAR", "KWD", "BHD", "OMR", "JOD", "ILS", "IQD",
+      "IRR", "LBP", "SYP", "YER",
+      // Africa
+      "ZAR", "EGP", "NGN", "KES", "GHS", "TZS", "UGX", "ETB", "SDG",
+      "SSP", "RWF", "BIF", "DJF", "ERN", "SOS", "MUR", "SCR", "MGA",
+      "MWK", "MZN", "ZMW", "BWP", "NAD", "LSL", "SZL", "AOA", "CDF",
+      "XAF", "XOF", "GMD", "GNF", "SLE", "SLL", "LRD", "CVE", "STN",
+      "KMF", "DZD", "MAD", "TND", "LYD", "MRU", "FKP", "SHP",
+      "XPF", "ZWG", "ZWL",
+      // Crypto & special
+      "BTC", "ETH", "XDR",
     ),
   },
 });

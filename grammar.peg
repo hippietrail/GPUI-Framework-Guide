@@ -10,7 +10,17 @@
 //   4. JIT    — cranelift or copy-and-patch from IR to native code
 //
 // Units and currencies are NOT grammar rules — they are data tables
-// loaded at init and queried during lexing. See data/*.txt.
+// loaded at init and queried during lexing. See data/*.txt (168 currencies).
+//
+// PARSER BEHAVIOR:
+//   - Trailing tokens after a complete expression are rejected (parse error)
+//   - Mixed currency arithmetic converts RHS to LHS for ALL operators
+//   - Same-unit/currency division returns a dimensionless result
+//   - Currency symbols work in BOTH prefix AND suffix: $10 and 10$
+//   - Currency codes work in BOTH prefix AND suffix: INR 50 and 50 INR
+//   - Display shorthands recognized as input: Dh (AED), SFr. (CHF),
+//     R$ (BRL), HK$ (HKD), S$ (SGD), SR (SAR), NIS (ILS), NT$ (TWD)
+//   - Inches display as "inches" not "in" (avoids conflict with conversion)
 // =============================================================================
 
 
@@ -76,7 +86,7 @@ aggregation = {
 //   ( 7, 8)  <<, >>                        left       shift_op
 //   ( 9,10)  +, -, plus, minus, etc       left       binary_op
 //   (11,12)  *, /, mod, times, etc        left       binary_op
-//   (14,13)  ^                            LEFT(!)    binary_op
+//   (13,14)  ^                            LEFT(!)    binary_op
 //   (—, 15)  - (unary prefix)             prefix     unary_op
 //   (—, 17)  sqrt, sin, abs, etc          prefix     func_call
 //   (—, 19)  %, of, on, off               prefix     percent_op
@@ -264,13 +274,18 @@ hex_number    = @{ "0" ~ ("x" | "X") ~ ASCII_HEX_DIGIT+ }
 binary_number = @{ "0b" ~ ('0'..'1')+ }
 octal_number  = @{ "0" ~ ("o" | "O") ~ ('0'..'7')+ }
 
-scaled_number = { number ~ scale }
+scaled_number = { number ~ scale ~ unit_identifier? }
 
 scale = {
     "thousand" | "Thousand" | "thousands" | "Thousands" | "th."
   | "million"  | "Million"  | "millions"  | "Millions"
   | "billion" | "Billion" | "milliard" | "Milliard"
   | "billions" | "Billions" | "milliards" | "Milliards"
+  | "trillion" | "Trillion" | "trillions" | "Trillions"
+  | "quadrillion" | "Quadrillion" | "quadrillions" | "Quadrillions"
+  | "quintillion" | "Quintillion" | "quintillions" | "Quintillions"
+  | "sextillion" | "Sextillion" | "sextillions" | "Sextillions"
+  | "septillion" | "Septillion" | "septillions" | "Septillions"
   | "th" | "k" | "M"
 }
 
@@ -284,16 +299,30 @@ scale = {
 // =============================================================================
 
 number_with_unit = {
-    currency_symbol ~ number
-  | number ~ currency_symbol
+    currency_symbol ~ number                    // $10, €50
+  | number ~ currency_symbol                    // 10$, 50€
+  | compound_currency_symbol ~ number           // R$10, HK$50, S$30, NT$100
+  | number ~ compound_currency_symbol           // 10R$, 50HK$
+  | currency_code ~ number                      // INR 50, USD 100
+  | number ~ currency_code                      // 50 INR, 100 USD
   | number ~ unit_identifier
 }
+
+// Compound currency symbols that end with $
+compound_currency_symbol = { ("R" | "HK" | "S" | "NT") ~ "$" }
+
+// ISO 4217 currency codes (data-driven, see data/currencies.txt — 168 total)
+currency_code = @{ ASCII_ALPHA{2,3} }
 
 // Currency symbols are grammar-level (prefix/suffix punctuation)
 currency_symbol = {
     "$" | "\u{20AC}" | "\u{00A3}" | "\u{00A5}"
   | "\u{20BD}" | "\u{20AA}" | "\u{20B9}" | "\u{20A9}"
   | "\u{20B4}" | "\u{20BF}" | "\u{20BA}" | "\u{0E3F}"
+  | "\u{20B1}" | "\u{20A6}" | "\u{20AB}" | "\u{20A8}"
+  | "\u{09F3}" | "\u{20B8}" | "\u{20BC}" | "\u{20BE}"
+  | "\u{058F}" | "\u{17DB}" | "\u{20AD}" | "\u{20AE}"
+  | "\u{20A1}" | "\u{20B2}" | "\u{0192}"
 }
 
 // Catch-all: any word the lexer will resolve to a unit, currency code, etc.

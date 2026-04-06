@@ -111,7 +111,7 @@ prev_keyword = "prev" ;
  * Operator precedence (highest to lowest):
  *   1. Atoms: numbers, parenthesized expressions, function calls, percent-of
  *   2. Unary minus (prefix -)
- *   3. Exponentiation  ^                        (right-associative)
+ *   3. Exponentiation  ^                        (LEFT-associative)
  *   4. Multiplicative   * / × ÷ mod             (left-associative)
  *   5. Additive         + -   and word aliases   (left-associative)
  *   6. Bitwise shift    << >>                    (left-associative)
@@ -144,9 +144,9 @@ additive_expr =
 multiplicative_expr =
     exponent_expr , { mul_or_div_op , exponent_expr } ;
 
-(* Right-associative *)
+(* LEFT-associative: 2^3^2 = (2^3)^2 = 64. BP = (13, 14). *)
 exponent_expr =
-    unary_expr , [ "^" , exponent_expr ] ;
+    unary_expr , { "^" , unary_expr } ;
 
 unary_expr =
       [ "-" ] , atom ;
@@ -213,7 +213,7 @@ repr_keyword =
     | "binary" | "bin"
     | "octal"  | "oct"
     | "decimal" | "dec"
-    | "scientific" | "sci" ;
+    | "scientific" | "sci" | "exp" | "exponent" | "exponential" ;
 
 
 (* ============================================================================
@@ -322,14 +322,21 @@ octal_digit =
  * A number followed by a scale suffix. Case-sensitive: k/K differ
  * (k = thousand, K = Kelvin). M = million (but also Mega SI prefix). *)
 
+(* A scaled number can optionally be followed by a unit or currency:
+ * "107 billion USD", "5 trillion yen" *)
 scaled_number =
-    number_literal , scale_suffix ;
+    number_literal , scale_suffix , [ whitespace , ( unit | currency ) ] ;
 
 scale_suffix =
       "k" | "thousand" | "Thousand" | "thousands" | "Thousands" | "th" | "th."
     | "M" | "million"  | "Million"  | "millions"  | "Millions"
     | "billion" | "Billion" | "milliard" | "Milliard"
-    | "billions" | "Billions" | "milliards" | "Milliards" ;
+    | "billions" | "Billions" | "milliards" | "Milliards"
+    | "trillion" | "Trillion" | "trillions" | "Trillions"
+    | "quadrillion" | "Quadrillion" | "quadrillions" | "Quadrillions"
+    | "quintillion" | "Quintillion" | "quintillions" | "Quintillions"
+    | "sextillion" | "Sextillion" | "sextillions" | "Sextillions"
+    | "septillion" | "Septillion" | "septillions" | "Septillions" ;
 
 
 (* --- Constants --- *)
@@ -404,9 +411,16 @@ unit_value =
     number_literal , whitespace , unit ;
 
 currency_value =
-      currency_symbol , number_literal          (* $10 *)
-    | number_literal , currency_symbol          (* 10$ *)
-    | number_literal , whitespace , currency ;   (* 10 USD, 10 euro *)
+      currency_symbol , number_literal              (* $10, €50 — prefix symbol *)
+    | number_literal , currency_symbol              (* 10$, 50€ — suffix symbol *)
+    | compound_currency_symbol , number_literal     (* R$10, HK$50, S$30, NT$100 *)
+    | number_literal , compound_currency_symbol     (* 10R$, 50HK$ *)
+    | currency_code , whitespace , number_literal   (* INR 50, USD 100 — prefix code *)
+    | number_literal , whitespace , currency ;      (* 10 USD, 50 INR, 10 euro — suffix *)
+
+(* Compound symbols that end with $, resolved by lexer *)
+compound_currency_symbol =
+    ( "R" | "HK" | "S" | "NT" ) , "$" ;
 
 
 (* ============================================================================
@@ -585,26 +599,32 @@ currency =
 
 currency_symbol =
     "$" | "€" | "£" | "¥" | "₽" | "₪" | "₹" | "₩" | "₴" | "₿"
-  | "₺" | "฿" | "zł" ;
+  | "₺" | "฿" | "zł"
+  | "₱" (* PHP *) | "₦" (* NGN *) | "₫" (* VND *) | "₨" (* PKR *)
+  | "৳" (* BDT *) | "₸" (* KZT *) | "₼" (* AZN *) | "₾" (* GEL *)
+  | "֏" (* AMD *) | "៛" (* KHR *) | "₭" (* LAK *) | "₮" (* MNT *)
+  | "₡" (* CRC *) | "₲" (* PYG *) | "ƒ" (* ANG *) ;
 
-(* Complete ISO 4217 codes — all 159 currencies from a reference calculator *)
+(* ISO 4217 codes and additional currency codes — 168 total currencies *)
 currency_code =
   (* Major fiat *)
     "USD" | "EUR" | "GBP" | "JPY" | "CHF" | "CAD" | "AUD" | "NZD" | "CNY"
   (* Asia-Pacific *)
   | "INR" | "KRW" | "HKD" | "SGD" | "TWD" | "THB" | "MYR" | "IDR" | "PHP"
-  | "VND" | "KHR" | "LAK" | "MMK" | "MNT" | "KPW" | "KZT" | "KGS" | "UZS"
+  | "VND" | "KHR" | "LAK" | "MMK" | "MNT" | "KZT" | "KGS" | "UZS"
   | "TJS" | "TMT" | "BDT" | "LKR" | "NPR" | "PKR" | "BTN" | "MVR" | "BND"
-  | "PGK" | "FJD" | "WST" | "VUV" | "TOP" | "SBD" | "MOP"
+  | "PGK" | "FJD" | "WST" | "VUV" | "TOP" | "SBD" | "MOP" | "CNH" | "KID"
+  | "TVD" | "AFN"
   (* Europe *)
   | "SEK" | "NOK" | "DKK" | "PLN" | "CZK" | "HUF" | "RON" | "BGN" | "HRK"
-  | "RSD" | "RUB" | "UAH" | "BYN" | "BYR" | "MDL" | "GEL" | "AZN" | "AMD"
-  | "TRY" | "ISK" | "BAM" | "MKD" | "ALL" | "LTL" | "LVL"
+  | "RSD" | "RUB" | "UAH" | "BYN" | "MDL" | "GEL" | "AZN" | "AMD"
+  | "TRY" | "ISK" | "BAM" | "MKD" | "ALL" | "FOK" | "GGP" | "GIP" | "IMP"
+  | "JEP"
   (* Americas *)
   | "MXN" | "BRL" | "ARS" | "CLP" | "COP" | "PEN" | "UYU" | "PYG" | "BOB"
-  | "VEF" | "GYD" | "SRD" | "CRC" | "NIO" | "HNL" | "GTQ" | "BZD" | "DOP"
+  | "VES" | "GYD" | "SRD" | "CRC" | "NIO" | "HNL" | "GTQ" | "BZD" | "DOP"
   | "CUP" | "JMD" | "HTG" | "BSD" | "BBD" | "TTD" | "KYD" | "BMD" | "XCD"
-  | "SVC" | "PAB"
+  | "PAB" | "ANG" | "AWG" | "XCG" | "CLF"
   (* Middle East *)
   | "AED" | "SAR" | "QAR" | "KWD" | "BHD" | "OMR" | "JOD" | "ILS" | "IQD"
   | "IRR" | "LBP" | "SYP" | "YER"
@@ -612,11 +632,13 @@ currency_code =
   | "ZAR" | "EGP" | "NGN" | "KES" | "GHS" | "TZS" | "UGX" | "ETB" | "SDG"
   | "SSP" | "RWF" | "BIF" | "DJF" | "ERN" | "SOS" | "MUR" | "SCR" | "MGA"
   | "MWK" | "MZN" | "ZMW" | "BWP" | "NAD" | "LSL" | "SZL" | "AOA" | "CDF"
-  | "XAF" | "XOF" | "XCD" | "GMD" | "GNF" | "SLL" | "LRD" | "CVE" | "STD"
-  | "KMF" | "DZD" | "MAD" | "TND" | "LYD" | "MRO" | "FKP" | "GIP" | "SHP"
-  | "XPF"
+  | "XAF" | "XOF" | "GMD" | "GNF" | "SLE" | "SLL" | "LRD" | "CVE" | "STN"
+  | "KMF" | "DZD" | "MAD" | "TND" | "LYD" | "MRU" | "FKP" | "SHP"
+  | "XPF" | "ZWG" | "ZWL"
   (* Crypto *)
-  | "BTC" | "ETH" ;
+  | "BTC" | "ETH"
+  (* Special *)
+  | "XDR" ;
 
 (* Natural language currency names — locale-dependent.
  * Full variant lists in data/currencies.txt. English examples below. *)
@@ -658,6 +680,15 @@ currency_name =
   (* KES *)  | "Kenyan Shilling" | "Kenyan Shillings"
   (* BTC *)  | "Bitcoin" | "Bitcoins"
   (* ETH *)  | "Ethereum" | "Ether"
+  (* Display shorthands also accepted as input *)
+  (* AED *)  | "Dh"
+  (* CHF *)  | "SFr." | "SFr"
+  (* BRL *)  | "R$"
+  (* HKD *)  | "HK$"
+  (* SGD *)  | "S$"
+  (* SAR *)  | "SR"
+  (* ILS *)  | "NIS"
+  (* TWD *)  | "NT$"
   (* ...and ~300 more locale-dependent names, see data/currencies.txt *)
   ;
 
@@ -724,8 +755,19 @@ newline =
  *    - number + currency_value  → currency_value (unit propagates)
  *    - number + unit_value      → unit_value (unit propagates)
  *    - unit_value ± unit_value  → converts RHS to LHS unit, result in LHS unit
+ *    - Mixed currency arithmetic converts RHS to LHS for ALL operators
+ *      (not just add/sub — also mul, div, pow, mod)
  *    - unit_value * number      → unit_value (preserves unit)
  *    - unit_value / unit_value  → number (units cancel if same dimension)
+ *    - Same-unit/currency division returns a dimensionless result
+ *
+ * 1a. TRAILING TOKEN REJECTION
+ *    - After a complete expression is parsed, any remaining tokens
+ *      cause a parse error. E.g. "5 + 3 hello" is rejected.
+ *
+ * 1b. INCHES DISPLAY
+ *    - Inches display as "inches" not "in" to avoid conflict with the
+ *      conversion keyword. "in" is still accepted as input for inches.
  *
  * 2. INLINE PERCENT SEMANTICS
  *    - `$100 + 5%`  means `$100 + (5% of $100)` = $105
