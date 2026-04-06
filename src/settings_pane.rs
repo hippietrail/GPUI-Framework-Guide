@@ -1,12 +1,18 @@
-use gpui::{Context, MouseButton, MouseUpEvent, Render, Window, div, prelude::*, px};
+use gpui::{
+    actions, App, Context, FocusHandle, Focusable, MouseButton, MouseUpEvent,
+    Render, Window, div, prelude::*, px,
+};
 use numnum_core::config::Settings;
 
 use crate::theme::Theme;
+
+actions!(settings_pane, [EscapeSettings]);
 
 pub struct SettingsPane {
     pub visible: bool,
     settings: Settings,
     theme: Theme,
+    focus_handle: FocusHandle,
     font_list: Vec<String>,
     font_list_open: bool,
     font_scroll_offset: usize,
@@ -15,11 +21,12 @@ pub struct SettingsPane {
 const FONT_LIST_PAGE_SIZE: usize = 12;
 
 impl SettingsPane {
-    pub fn new(settings: Settings, theme: Theme) -> Self {
+    pub fn new(cx: &mut Context<Self>, settings: Settings, theme: Theme) -> Self {
         SettingsPane {
             visible: false,
             settings,
             theme,
+            focus_handle: cx.focus_handle(),
             font_list: Vec::new(),
             font_list_open: false,
             font_scroll_offset: 0,
@@ -28,6 +35,9 @@ impl SettingsPane {
 
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.visible = !self.visible;
+        if !self.visible {
+            self.font_list_open = false;
+        }
         cx.notify();
     }
 
@@ -111,6 +121,21 @@ impl SettingsPane {
         self.font_scroll_offset = (self.font_scroll_offset + FONT_LIST_PAGE_SIZE).min(max);
         cx.notify();
     }
+
+    fn on_escape(&mut self, _: &EscapeSettings, _window: &mut Window, cx: &mut Context<Self>) {
+        if self.font_list_open {
+            self.font_list_open = false;
+            cx.notify();
+        } else {
+            self.close(cx);
+        }
+    }
+}
+
+impl Focusable for SettingsPane {
+    fn focus_handle(&self, _: &App) -> FocusHandle {
+        self.focus_handle.clone()
+    }
 }
 
 impl Render for SettingsPane {
@@ -153,9 +178,28 @@ impl Render for SettingsPane {
             .justify_center()
             .items_center()
             .bg(theme.background)
+            .track_focus(&self.focus_handle(cx))
+            .key_context("SettingsPane")
+            .on_action(cx.listener(Self::on_escape))
+            // Click on background (outside the card) closes settings
+            .id("settings-bg")
+            .on_mouse_up(
+                MouseButton::Left,
+                cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                    this.close(cx);
+                }),
+            )
             .child(
                 div()
                     .w(px(400.))
+                    // Stop click propagation so clicking the card doesn't close
+                    .id("settings-card")
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        |_: &MouseUpEvent, _window: &mut Window, _cx: &mut App| {
+                            // Absorb click — don't propagate to background
+                        },
+                    )
                     .bg(theme.editor_background)
                     .rounded(px(12.))
                     .p(px(24.))

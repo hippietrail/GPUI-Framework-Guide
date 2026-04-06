@@ -12,6 +12,7 @@ use numnum_core::Settings;
 
 use crate::app::NumNumApp;
 use crate::editor::*;
+use crate::settings_pane::EscapeSettings;
 use crate::theme::Theme;
 
 fn main() {
@@ -79,6 +80,7 @@ fn main() {
             KeyBinding::new("ctrl-z", Undo, Some("Editor")),
             KeyBinding::new("cmd-shift-z", Redo, Some("Editor")),
             KeyBinding::new("ctrl-shift-z", Redo, Some("Editor")),
+            KeyBinding::new("escape", EscapeSettings, Some("SettingsPane")),
         ]);
 
         let theme_clone = theme.clone();
@@ -90,6 +92,7 @@ fn main() {
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     focus: true,
+                    window_min_size: Some(size(px(480.0), px(360.0))),
                     ..Default::default()
                 },
                 move |window, cx| {

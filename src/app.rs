@@ -46,7 +46,7 @@ impl NumNumApp {
         let results_pane = cx.new(|_| ResultsPane::new(theme.clone(), copy_full_precision));
 
         // Create settings pane
-        let settings_pane = cx.new(|_| SettingsPane::new(settings.clone(), theme.clone()));
+        let settings_pane = cx.new(|cx| SettingsPane::new(cx, settings.clone(), theme.clone()));
 
         // Create status bar with settings callback
         let settings_pane_for_bar = settings_pane.clone();
