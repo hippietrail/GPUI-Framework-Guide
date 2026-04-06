@@ -2,17 +2,18 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use gpui::{
-    Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
+    App, Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Render, ScrollHandle, SharedString, Window, div, point, prelude::*, px,
 };
 
 use gpui::relative;
-use numnum_core::format::{format_value, format_value_full_precision};
-use numnum_core::{EvalContext, Value};
+use numnum_core::format::{format_value_with_precision, format_value_full_precision};
+use numnum_core::{EvalContext, Settings, Value};
 
 use crate::editor::Editor;
 use crate::rates;
 use crate::results_pane::{LineResult, ResultsPane};
+use crate::settings_pane::SettingsPane;
 use crate::status_bar::StatusBar;
 use crate::theme::Theme;
 
@@ -20,9 +21,11 @@ pub struct NumNumApp {
     pub editor: Entity<Editor>,
     results_pane: Entity<ResultsPane>,
     status_bar: Entity<StatusBar>,
+    settings_pane: Entity<SettingsPane>,
     theme: Theme,
     font_family: SharedString,
     font_size: f32,
+    precision: u32,
     split_ratio: f32, // 0.0-1.0, fraction of width for editor
     is_dragging_divider: bool,
     scroll_handle: ScrollHandle,
@@ -32,13 +35,29 @@ impl NumNumApp {
     pub fn new(
         cx: &mut Context<Self>,
         theme: Theme,
-        font_family: String,
-        font_size: f32,
-        copy_full_precision: bool,
+        settings: Settings,
         live_rates: Arc<Mutex<HashMap<String, f64>>>,
     ) -> Self {
+        let font_family = settings.editor.font_family.clone();
+        let font_size = settings.editor.font_size;
+        let copy_full_precision = settings.editor.copy_full_precision;
+        let precision = settings.editor.precision;
+
         let results_pane = cx.new(|_| ResultsPane::new(theme.clone(), copy_full_precision));
-        let status_bar = cx.new(|_| StatusBar::new(theme.clone()));
+
+        // Create settings pane
+        let settings_pane = cx.new(|_| SettingsPane::new(settings.clone(), theme.clone()));
+
+        // Create status bar with settings callback
+        let settings_pane_for_bar = settings_pane.clone();
+        let status_bar = cx.new(|_| StatusBar::new(
+            theme.clone(),
+            Some(Box::new(move |_window: &mut Window, cx: &mut App| {
+                settings_pane_for_bar.update(cx, |pane, cx| {
+                    pane.toggle(cx);
+                });
+            })),
+        ));
 
         let theme_clone = theme.clone();
         let font_for_app = font_family.clone();
@@ -56,9 +75,10 @@ impl NumNumApp {
         let results_for_eval = results_pane.clone();
         let status_for_eval = status_bar.clone();
         let editor_for_eval = editor.clone();
-        cx.observe(&editor, move |_this, _editor_entity, cx| {
+        cx.observe(&editor, move |this, _editor_entity, cx| {
             let content = editor_for_eval.read(cx).content().to_string();
             let (line, col) = editor_for_eval.read(cx).cursor_line_col();
+            let precision = this.precision;
 
             let mut eval_ctx = EvalContext::new();
             if let Ok(rates) = live_rates.lock() {
@@ -77,8 +97,8 @@ impl NumNumApp {
                         diagnostics.push(None);
                     }
                     Ok(val) => {
-                        let formatted = format_value(
-                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
+                        let formatted = format_value_with_precision(
+                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table, precision,
                         );
                         let full_precision = format_value_full_precision(
                             &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
@@ -107,7 +127,7 @@ impl NumNumApp {
                     Value::WithCurrency(_, c) => Value::WithCurrency(running_total, *c),
                     _ => Value::Number(running_total),
                 };
-                format_value(&total_val, &eval_ctx.unit_table, &eval_ctx.currency_table)
+                format_value_with_precision(&total_val, &eval_ctx.unit_table, &eval_ctx.currency_table, precision)
             };
 
             // Update editor diagnostics (for inlay rendering)
@@ -155,13 +175,32 @@ impl NumNumApp {
         })
         .detach();
 
+        // Wire up on_save callback: settings pane -> app
+        let results_pane_for_save = results_pane.clone();
+        let settings_pane_clone = settings_pane.clone();
+        cx.observe(&settings_pane_clone, move |this, settings_entity, cx| {
+            let pane = settings_entity.read(cx);
+            let new_settings = pane.current_settings();
+            this.precision = new_settings.editor.precision;
+            this.font_size = new_settings.editor.font_size;
+            // Update results pane copy_full_precision
+            let copy_fp = new_settings.editor.copy_full_precision;
+            results_pane_for_save.update(cx, |rp, cx| {
+                rp.copy_full_precision = copy_fp;
+                cx.notify();
+            });
+            cx.notify();
+        }).detach();
+
         NumNumApp {
             editor,
             results_pane,
             status_bar,
+            settings_pane,
             theme,
             font_family: SharedString::from(font_for_app),
             font_size,
+            precision,
             split_ratio: 0.7,
             is_dragging_divider: false,
             scroll_handle,
@@ -292,5 +331,6 @@ impl Render for NumNumApp {
                     ),
             )
             .child(self.status_bar.clone())
+            .child(self.settings_pane.clone())
     }
 }

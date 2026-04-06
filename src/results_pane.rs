@@ -14,7 +14,7 @@ pub enum LineResult {
 pub struct ResultsPane {
     results: Vec<LineResult>,
     has_diagnostic: Vec<bool>,
-    copy_full_precision: bool,
+    pub copy_full_precision: bool,
     theme: Theme,
 }
 

@@ -1,4 +1,4 @@
-use gpui::{Context, Render, Window, div, prelude::*, px};
+use gpui::{App, Context, MouseButton, MouseUpEvent, Render, Window, div, prelude::*, px, svg};
 
 use crate::theme::Theme;
 
@@ -7,15 +7,20 @@ pub struct StatusBar {
     col: usize,
     running_total: String,
     theme: Theme,
+    on_settings_click: Option<Box<dyn Fn(&mut Window, &mut App)>>,
 }
 
 impl StatusBar {
-    pub fn new(theme: Theme) -> Self {
+    pub fn new(
+        theme: Theme,
+        on_settings_click: Option<Box<dyn Fn(&mut Window, &mut App)>>,
+    ) -> Self {
         StatusBar {
             line: 1,
             col: 1,
             running_total: String::new(),
             theme,
+            on_settings_click,
         }
     }
 
@@ -33,6 +38,10 @@ impl StatusBar {
 
 impl Render for StatusBar {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
+        let icon_path = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icons/settings.svg");
+
+        let on_settings = self.on_settings_click.take();
+
         div()
             .flex()
             .flex_row()
@@ -43,12 +52,33 @@ impl Render for StatusBar {
             .px(px(12.))
             .items_center()
             .text_size(px(12.))
-            // Left: cursor position
+            // Left: Settings gear icon
             .child(
                 div()
-                    .flex_1()
-                    .text_color(self.theme.text_dimmed)
-                    .child(format!("Ln {}, Col {}", self.line, self.col)),
+                    .flex_shrink_0()
+                    .w(px(80.))
+                    .flex()
+                    .items_center()
+                    .child(
+                        div()
+                            .id("settings-btn")
+                            .cursor_pointer()
+                            .child(
+                                svg()
+                                    .path(icon_path)
+                                    .size(px(16.))
+                                    .text_color(self.theme.text_dimmed)
+                            )
+                            .hover(|s| s.opacity(0.8))
+                            .when_some(on_settings, |el, cb| {
+                                el.on_mouse_up(
+                                    MouseButton::Left,
+                                    move |_: &MouseUpEvent, window: &mut Window, cx: &mut App| {
+                                        cb(window, cx);
+                                    },
+                                )
+                            })
+                    ),
             )
             // Center: total
             .child(
@@ -63,7 +93,15 @@ impl Render for StatusBar {
                         format!("Total: {}", self.running_total)
                     }),
             )
-            // Right: spacer for balance
-            .child(div().flex_1())
+            // Right: Ln X, Col Y
+            .child(
+                div()
+                    .flex_shrink_0()
+                    .w(px(80.))
+                    .flex()
+                    .justify_end()
+                    .text_color(self.theme.text_dimmed)
+                    .child(format!("Ln {}, Col {}", self.line, self.col)),
+            )
     }
 }

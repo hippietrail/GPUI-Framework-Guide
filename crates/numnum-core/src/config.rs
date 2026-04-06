@@ -55,6 +55,7 @@ pub struct EditorSettings {
     pub tab_size: u32,
     pub split_ratio: f32,
     pub copy_full_precision: bool,
+    pub precision: u32,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -92,6 +93,14 @@ impl Color {
 
     pub fn to_rgb_u32(&self) -> u32 {
         ((self.r as u32) << 16) | ((self.g as u32) << 8) | (self.b as u32)
+    }
+
+    pub fn to_hex(&self) -> String {
+        if self.a == 255 {
+            format!("#{:02x}{:02x}{:02x}", self.r, self.g, self.b)
+        } else {
+            format!("#{:02x}{:02x}{:02x}{:02x}", self.r, self.g, self.b, self.a)
+        }
     }
 }
 
@@ -235,8 +244,103 @@ impl Settings {
                 tab_size: get_u32("editor", "tab_size", 4),
                 split_ratio: get_f32("editor.split", "default_ratio", 0.6),
                 copy_full_precision: get_bool("editor.clipboard", "full_precision", true),
+                precision: get_u32("editor", "precision", 2),
             },
         }
+    }
+
+    /// Write current settings back to the TOML config file.
+    pub fn save(&self) {
+        let path = settings_path();
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let t = &self.theme;
+        let s = &t.syntax;
+        let e = &self.editor;
+        let toml = format!(
+            r#"[theme]
+name = "{name}"
+background = "{background}"
+editor_background = "{editor_background}"
+gutter = "{gutter}"
+status_bar = "{status_bar}"
+divider = "{divider}"
+cursor = "{cursor}"
+selection = "{selection}"
+text = "{text}"
+text_muted = "{text_muted}"
+text_dimmed = "{text_dimmed}"
+result = "{result}"
+error = "{error}"
+
+[theme.syntax]
+number = "{syn_number}"
+operator = "{syn_operator}"
+keyword = "{syn_keyword}"
+function = "{syn_function}"
+variable = "{syn_variable}"
+variable_def = "{syn_variable_def}"
+unit = "{syn_unit}"
+currency = "{syn_currency}"
+label = "{syn_label}"
+comment = "{syn_comment}"
+header = "{syn_header}"
+percent = "{syn_percent}"
+string = "{syn_string}"
+scale = "{syn_scale}"
+
+[editor]
+font_family = "{font_family}"
+font_weight = "{font_weight}"
+font_size = {font_size}
+line_height = {line_height}
+tab_size = {tab_size}
+precision = {precision}
+
+[editor.split]
+default_ratio = {split_ratio}
+
+[editor.clipboard]
+full_precision = {full_precision}
+"#,
+            name = t.name,
+            background = t.background.to_hex(),
+            editor_background = t.editor_background.to_hex(),
+            gutter = t.gutter.to_hex(),
+            status_bar = t.status_bar.to_hex(),
+            divider = t.divider.to_hex(),
+            cursor = t.cursor.to_hex(),
+            selection = t.selection.to_hex(),
+            text = t.text.to_hex(),
+            text_muted = t.text_muted.to_hex(),
+            text_dimmed = t.text_dimmed.to_hex(),
+            result = t.result.to_hex(),
+            error = t.error.to_hex(),
+            syn_number = s.number.to_hex(),
+            syn_operator = s.operator.to_hex(),
+            syn_keyword = s.keyword.to_hex(),
+            syn_function = s.function.to_hex(),
+            syn_variable = s.variable.to_hex(),
+            syn_variable_def = s.variable_def.to_hex(),
+            syn_unit = s.unit.to_hex(),
+            syn_currency = s.currency.to_hex(),
+            syn_label = s.label.to_hex(),
+            syn_comment = s.comment.to_hex(),
+            syn_header = s.header.to_hex(),
+            syn_percent = s.percent.to_hex(),
+            syn_string = s.string.to_hex(),
+            syn_scale = s.scale.to_hex(),
+            font_family = e.font_family,
+            font_weight = e.font_weight,
+            font_size = e.font_size,
+            line_height = e.line_height,
+            tab_size = e.tab_size,
+            precision = e.precision,
+            split_ratio = e.split_ratio,
+            full_precision = e.copy_full_precision,
+        );
+        let _ = std::fs::write(&path, toml);
     }
 }
 
@@ -283,6 +387,7 @@ impl Default for Settings {
                 tab_size: 4,
                 split_ratio: 0.6,
                 copy_full_precision: true,
+                precision: 2,
             },
         }
     }

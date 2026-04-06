@@ -1418,7 +1418,7 @@ $50 as a % of $200";
 #[cfg(test)]
 mod reference_compat_tests {
     use crate::evaluator::EvalContext;
-    use crate::format::{format_value, format_number};
+    use crate::format::format_value;
 
     fn eval_formatted(input: &str) -> String {
         let mut ctx = EvalContext::new();

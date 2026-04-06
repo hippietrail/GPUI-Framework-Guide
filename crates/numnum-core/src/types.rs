@@ -638,11 +638,11 @@ impl Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Number(n) => write!(f, "{}", crate::format::format_number(*n)),
+            Value::Number(n) => write!(f, "{}", crate::format::format_number(*n, 2)),
             Value::NumberRepr(n, repr) => write!(f, "{}", crate::format::format_number_repr(*n, *repr)),
-            Value::WithUnit(n, _) => write!(f, "{}", crate::format::format_number(*n)),
-            Value::WithCurrency(n, _) => write!(f, "{}", crate::format::format_number(*n)),
-            Value::Percent(n) => write!(f, "{} %", crate::format::format_number(*n * 100.0)),
+            Value::WithUnit(n, _) => write!(f, "{}", crate::format::format_number(*n, 2)),
+            Value::WithCurrency(n, _) => write!(f, "{}", crate::format::format_number(*n, 2)),
+            Value::Percent(n) => write!(f, "{} %", crate::format::format_number(*n * 100.0, 2)),
             Value::None => Ok(()),
         }
     }

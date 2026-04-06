@@ -2,6 +2,7 @@ mod app;
 mod editor;
 mod rates;
 mod results_pane;
+mod settings_pane;
 mod status_bar;
 mod theme;
 
@@ -81,9 +82,8 @@ fn main() {
         ]);
 
         let theme_clone = theme.clone();
-        let font_family = settings.editor.font_family.clone();
         let font_size = settings.editor.font_size;
-        let copy_full_precision = settings.editor.copy_full_precision;
+        let settings_clone = settings.clone();
         let rates_clone = live_rates.clone();
         let _window_handle = cx
             .open_window(
@@ -94,7 +94,7 @@ fn main() {
                 },
                 move |window, cx| {
                     window.set_rem_size(px(font_size));
-                    cx.new(|cx| NumNumApp::new(cx, theme_clone, font_family, font_size, copy_full_precision, rates_clone))
+                    cx.new(|cx| NumNumApp::new(cx, theme_clone, settings_clone, rates_clone))
                 },
             )
             .expect("Failed to open window");
