@@ -1006,12 +1006,17 @@ impl Element for EditorLineElement {
             window.paint_quad(cursor);
         }
 
-        // Store the shaped line layout back
+        // Store the shaped line layout and update editor bounds for hit testing
         self.editor.update(cx, |editor, _| {
             while editor.line_layouts.len() <= self.line_index {
                 editor.line_layouts.push(None);
             }
             editor.line_layouts[self.line_index] = Some(line);
+
+            // First line sets the editor origin for mouse hit testing
+            if self.line_index == 0 {
+                editor.last_bounds = Some(bounds);
+            }
         });
     }
 }
