@@ -202,6 +202,25 @@ impl EvalContext {
             Expr::FunctionCall { func, arg } => {
                 let v = self.eval_expr(arg)?;
                 let n = v.as_number().ok_or_else(|| EvalError::TypeMismatch("Function requires numeric argument".to_string()))?;
+
+                // For trig functions: if input has degrees unit, convert to radians
+                let is_trig = matches!(func,
+                    FuncKind::Sin | FuncKind::Cos | FuncKind::Tan |
+                    FuncKind::Asin | FuncKind::Acos | FuncKind::Atan
+                );
+                let trig_input = if is_trig {
+                    if let Value::WithUnit(val, unit_id) = &v {
+                        if let Some(unit_def) = self.unit_table.get(*unit_id) {
+                            if unit_def.dimension == Dimension::Angular {
+                                // Convert to radians via the unit system
+                                self.unit_table.convert(*val, *unit_id,
+                                    self.unit_table.lookup("rad").unwrap_or(UnitId(0))
+                                ).unwrap_or(n)
+                            } else { n }
+                        } else { n }
+                    } else { n }
+                } else { n };
+
                 let result = match func {
                     FuncKind::Sqrt => n.sqrt(),
                     FuncKind::Cbrt => n.cbrt(),
@@ -219,9 +238,9 @@ impl EvalContext {
                         }
                         factorial(n as u64) as f64
                     }
-                    FuncKind::Sin => n.sin(),
-                    FuncKind::Cos => n.cos(),
-                    FuncKind::Tan => n.tan(),
+                    FuncKind::Sin => trig_input.sin(),
+                    FuncKind::Cos => trig_input.cos(),
+                    FuncKind::Tan => trig_input.tan(),
                     FuncKind::Asin => n.asin(),
                     FuncKind::Acos => n.acos(),
                     FuncKind::Atan => n.atan(),
