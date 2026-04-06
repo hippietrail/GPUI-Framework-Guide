@@ -52,7 +52,7 @@ impl NumNumApp {
         let settings_pane_for_bar = settings_pane.clone();
         let status_bar = cx.new(|_| StatusBar::new(
             theme.clone(),
-            Some(Box::new(move |_window: &mut Window, cx: &mut App| {
+            Some(Arc::new(move |_window: &mut Window, cx: &mut App| {
                 settings_pane_for_bar.update(cx, |pane, cx| {
                     pane.toggle(cx);
                 });

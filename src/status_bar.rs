@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use gpui::{App, Context, MouseButton, MouseUpEvent, Render, Window, div, prelude::*, px, svg};
 
 use crate::theme::Theme;
@@ -7,13 +9,13 @@ pub struct StatusBar {
     col: usize,
     running_total: String,
     theme: Theme,
-    on_settings_click: Option<Box<dyn Fn(&mut Window, &mut App)>>,
+    on_settings_click: Option<Arc<dyn Fn(&mut Window, &mut App)>>,
 }
 
 impl StatusBar {
     pub fn new(
         theme: Theme,
-        on_settings_click: Option<Box<dyn Fn(&mut Window, &mut App)>>,
+        on_settings_click: Option<Arc<dyn Fn(&mut Window, &mut App)>>,
     ) -> Self {
         StatusBar {
             line: 1,
@@ -40,7 +42,8 @@ impl Render for StatusBar {
     fn render(&mut self, _window: &mut Window, _cx: &mut Context<Self>) -> impl IntoElement {
         let icon_path = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icons/settings.svg");
 
-        let on_settings = self.on_settings_click.take();
+        let on_settings = self.on_settings_click.clone();
+        let icon_color = self.theme.text_muted;
 
         div()
             .flex()
@@ -67,9 +70,9 @@ impl Render for StatusBar {
                                 svg()
                                     .path(icon_path)
                                     .size(px(16.))
-                                    .text_color(self.theme.text_dimmed)
+                                    .text_color(icon_color)
                             )
-                            .hover(|s| s.opacity(0.8))
+                            .hover(|s| s.opacity(0.7))
                             .when_some(on_settings, |el, cb| {
                                 el.on_mouse_up(
                                     MouseButton::Left,
