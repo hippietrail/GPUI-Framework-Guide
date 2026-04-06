@@ -219,7 +219,7 @@ impl NumNumApp {
                 let theme_name = match new_mode.as_str() {
                     "dark" => new_settings.appearance.dark_theme.clone(),
                     "light" => new_settings.appearance.light_theme.clone(),
-                    _ => new_settings.appearance.dark_theme.clone(),
+                    _ => new_settings.appearance.dark_theme.clone(), // auto defaults to dark
                 };
                 let tf = numnum_core::ThemeFile::load(&theme_name);
                 let new_theme = crate::theme::Theme::from_theme_file(&tf);
