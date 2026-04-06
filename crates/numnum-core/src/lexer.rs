@@ -510,6 +510,7 @@ impl<'a> Lexer<'a> {
     fn try_multi_word(&mut self, first_word: &str, start: usize) -> Option<Token> {
         let saved_pos = self.pos;
 
+        // Special multi-word operators / functions
         match first_word {
             "as" => {
                 // Try "as a % of" / "as a % on" / "as a % off"
@@ -527,35 +528,78 @@ impl<'a> Lexer<'a> {
                         return Some(Token { kind: TokenKind::AsAPctOff, span: start..self.pos });
                     }
                 }
+                self.pos = saved_pos;
             }
             "divided" | "divide" => {
                 if self.try_consume_word("by") {
                     return Some(Token { kind: TokenKind::Op(BinOp::Div), span: start..self.pos });
                 }
+                self.pos = saved_pos;
             }
             "multiplied" => {
                 if self.try_consume_word("by") {
                     return Some(Token { kind: TokenKind::Op(BinOp::Mul), span: start..self.pos });
                 }
+                self.pos = saved_pos;
             }
             "square" => {
                 if self.try_consume_word("root") {
                     return Some(Token { kind: TokenKind::Func(FuncKind::Sqrt), span: start..self.pos });
                 }
+                self.pos = saved_pos;
+                // fall through to generic multi-word unit lookup ("square meter", etc.)
             }
             "cube" | "cubic" | "cubed" => {
                 if self.try_consume_word("root") {
                     return Some(Token { kind: TokenKind::Func(FuncKind::Cbrt), span: start..self.pos });
                 }
-            }
-            "nautical" => {
-                if (self.try_consume_word("mile") || self.try_consume_word("miles"))
-                    && let Some(id) = self.unit_table.lookup("nautical mile")
-                {
-                    return Some(Token { kind: TokenKind::Unit(id), span: start..self.pos });
-                }
+                self.pos = saved_pos;
             }
             _ => {}
+        }
+
+        // Generic multi-word unit/currency lookup:
+        // Greedily consume up to 5 additional words, checking the longest match first.
+        let mut combined = first_word.to_string();
+        let mut word_positions: Vec<usize> = Vec::new(); // pos after each consumed word
+
+        for _ in 0..5 {
+            let before = self.pos;
+            self.skip_whitespace();
+            let word_start = self.pos;
+            // Read next word
+            while self.pos < self.input().len() {
+                match self.input()[self.pos..].chars().next() {
+                    Some(c) if c.is_alphanumeric() => self.pos += c.len_utf8(),
+                    _ => break,
+                }
+            }
+            if self.pos == word_start {
+                // No more words
+                self.pos = before;
+                break;
+            }
+            let next_word = self.processed_input[word_start..self.pos].to_lowercase();
+            combined.push(' ');
+            combined.push_str(&next_word);
+            word_positions.push(self.pos);
+        }
+
+        // Try longest match first, shrinking
+        while !word_positions.is_empty() {
+            if let Some(id) = self.unit_table.lookup(&combined) {
+                self.pos = *word_positions.last().unwrap();
+                return Some(Token { kind: TokenKind::Unit(id), span: start..self.pos });
+            }
+            if let Some(id) = self.currency_table.lookup(&combined) {
+                self.pos = *word_positions.last().unwrap();
+                return Some(Token { kind: TokenKind::Currency(id), span: start..self.pos });
+            }
+            // Remove last word and try shorter
+            word_positions.pop();
+            if let Some(last_space) = combined.rfind(' ') {
+                combined.truncate(last_space);
+            }
         }
 
         self.pos = saved_pos;

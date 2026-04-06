@@ -64,7 +64,24 @@ impl UnitTable {
     pub fn new() -> Self {
         let mut table = UnitTable { units: Vec::new(), name_to_id: HashMap::new() };
         table.build();
+        table.register_plurals();
         table
+    }
+
+    /// Auto-register plural forms for multi-word variant names.
+    /// E.g. "metric ton" → also registers "metric tons".
+    fn register_plurals(&mut self) {
+        let existing: Vec<(String, UnitId)> = self.name_to_id.iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+        for (name, id) in &existing {
+            if !name.contains(' ') { continue; }
+            if name.ends_with('s') || name.ends_with("feet") { continue; }
+            let plural = format!("{}s", name);
+            if !self.name_to_id.contains_key(&plural) {
+                self.name_to_id.insert(plural, *id);
+            }
+        }
     }
 
     fn add(&mut self, canonical: &str, display: &str, dim: Dimension, to_base: f64, offset: f64, variants: &[&str]) {
@@ -161,7 +178,7 @@ impl UnitTable {
             self.add_si_length(prefix, sym, factor);
         }
         self.add("inch", "inch", Dimension::Length, 0.0254, 0.0,
-            &["inch", "inches", "in", "\u{2033}"]);
+            &["inch", "inches", "\u{2033}"]);
         self.add("foot", "ft", Dimension::Length, 0.3048, 0.0,
             &["foot", "feet", "ft", "ft.", "foots", "feets"]);
         self.add("yard", "yd", Dimension::Length, 0.9144, 0.0,
@@ -187,7 +204,7 @@ impl UnitTable {
             self.add_si_mass(prefix, sym, factor);
         }
         self.add("tonne", "t", Dimension::Mass, 1000.0, 0.0,
-            &["tonne", "tonnes", "t", "metric ton"]);
+            &["tonne", "tonnes", "t", "metric ton", "metric tons"]);
         self.add("pound", "lb", Dimension::Mass, 0.45359237, 0.0,
             &["pound", "pounds", "lb", "lbm"]);
         self.add("ounce", "oz", Dimension::Mass, 0.02834952, 0.0,
@@ -333,7 +350,27 @@ impl CurrencyTable {
     pub fn new() -> Self {
         let mut table = CurrencyTable { currencies: Vec::new(), name_to_id: HashMap::new() };
         table.build();
+        table.register_plurals();
         table
+    }
+
+    /// Auto-register plural forms for all multi-word variant names.
+    /// E.g. "indian rupee" → also registers "indian rupees".
+    fn register_plurals(&mut self) {
+        let existing: Vec<(String, CurrencyId)> = self.name_to_id.iter()
+            .map(|(k, v)| (k.clone(), *v))
+            .collect();
+        for (name, id) in &existing {
+            if !name.contains(' ') { continue; }
+            // Skip names that already look plural
+            if name.ends_with('s') || name.ends_with("lei") || name.ends_with("leva")
+                || name.ends_with("kronor") || name.ends_with("kroner") { continue; }
+            // Generate plural: simple "s" suffix works for most currencies
+            let plural = format!("{}s", name);
+            if !self.name_to_id.contains_key(&plural) {
+                self.name_to_id.insert(plural, *id);
+            }
+        }
     }
 
     fn add(&mut self, code: &str, display: &str, rate: f64, variants: &[&str]) {
