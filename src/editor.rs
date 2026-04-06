@@ -74,7 +74,7 @@ pub struct Editor {
     // Per-line visual line count (1 for unwrapped, 2+ for wrapped)
     pub line_visual_counts: Vec<usize>,
     // Cursor blink: timestamp of last cursor movement
-    cursor_last_moved: Instant,
+    pub cursor_last_moved: Instant,
 }
 
 impl Editor {

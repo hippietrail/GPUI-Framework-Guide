@@ -10,6 +10,7 @@ actions!(settings_pane, [EscapeSettings]);
 
 pub struct SettingsPane {
     pub visible: bool,
+    needs_focus: bool,
     settings: Settings,
     theme: Theme,
     focus_handle: FocusHandle,
@@ -24,6 +25,7 @@ impl SettingsPane {
     pub fn new(cx: &mut Context<Self>, settings: Settings, theme: Theme) -> Self {
         SettingsPane {
             visible: false,
+            needs_focus: false,
             settings,
             theme,
             focus_handle: cx.focus_handle(),
@@ -35,6 +37,7 @@ impl SettingsPane {
 
     pub fn toggle(&mut self, cx: &mut Context<Self>) {
         self.visible = !self.visible;
+        self.needs_focus = self.visible;
         if !self.visible {
             self.font_list_open = false;
         }
@@ -142,6 +145,12 @@ impl Render for SettingsPane {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.visible {
             return div().into_any_element();
+        }
+
+        // Focus settings pane on first render after opening
+        if self.needs_focus {
+            self.needs_focus = false;
+            window.focus(&self.focus_handle, cx);
         }
 
         // Load font list from system if not yet populated

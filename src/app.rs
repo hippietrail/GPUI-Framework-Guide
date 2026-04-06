@@ -256,6 +256,10 @@ impl Render for NumNumApp {
         if self.was_settings_visible && !settings_visible {
             let focus = self.editor.focus_handle(cx);
             window.focus(&focus, cx);
+            // Reset cursor blink so it's immediately visible
+            self.editor.update(cx, |editor, _| {
+                editor.cursor_last_moved = std::time::Instant::now();
+            });
         }
         self.was_settings_visible = settings_visible;
 
