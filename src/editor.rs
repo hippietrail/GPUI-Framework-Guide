@@ -1,5 +1,4 @@
 use std::ops::Range;
-use std::time::Instant;
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
@@ -73,8 +72,9 @@ pub struct Editor {
     line_height: Pixels,
     // Per-line visual line count (1 for unwrapped, 2+ for wrapped)
     pub line_visual_counts: Vec<usize>,
-    // Cursor blink: timestamp of last cursor movement
-    pub cursor_last_moved: Instant,
+    // Cursor blink state
+    pub cursor_visible: bool,
+    blink_epoch: usize,
 }
 
 impl Editor {
@@ -85,7 +85,7 @@ impl Editor {
         font_size: f32,
         on_change: Option<OnChangeFn>,
     ) -> Self {
-        Editor {
+        let mut editor = Editor {
             focus_handle: cx.focus_handle(),
             content: String::new(),
             selected_range: 0..0,
@@ -105,8 +105,45 @@ impl Editor {
             last_bounds: None,
             line_height: px(26.0),
             line_visual_counts: Vec::new(),
-            cursor_last_moved: Instant::now(),
-        }
+            cursor_visible: true,
+            blink_epoch: 0,
+        };
+        editor.schedule_blink(cx);
+        editor
+    }
+
+    fn schedule_blink(&mut self, cx: &mut Context<Self>) {
+        self.blink_epoch += 1;
+        let epoch = self.blink_epoch;
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(std::time::Duration::from_millis(500)).await;
+            if let Some(this) = this.upgrade() {
+                this.update(cx, |editor, cx| {
+                    if editor.blink_epoch == epoch {
+                        editor.cursor_visible = !editor.cursor_visible;
+                        cx.notify();
+                        editor.schedule_blink(cx);
+                    }
+                });
+            }
+        }).detach();
+    }
+
+    pub fn pause_blinking(&mut self, cx: &mut Context<Self>) {
+        self.cursor_visible = true;
+        self.blink_epoch += 1; // cancel current timer
+        let epoch = self.blink_epoch;
+        cx.spawn(async move |this, cx| {
+            cx.background_executor().timer(std::time::Duration::from_millis(500)).await;
+            if let Some(this) = this.upgrade() {
+                this.update(cx, |editor, cx| {
+                    if editor.blink_epoch == epoch {
+                        editor.schedule_blink(cx);
+                    }
+                });
+            }
+        }).detach();
+        cx.notify();
     }
 
     pub fn content(&self) -> &str {
@@ -360,7 +397,7 @@ impl Editor {
     fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
         self.selected_range = offset..offset;
         self.selection_reversed = false;
-        self.cursor_last_moved = Instant::now();
+        self.pause_blinking(cx);
         cx.notify();
     }
 
@@ -382,7 +419,7 @@ impl Editor {
             self.selection_reversed = !self.selection_reversed;
             self.selected_range = self.selected_range.end..self.selected_range.start;
         }
-        self.cursor_last_moved = Instant::now();
+        self.pause_blinking(cx);
         cx.notify();
     }
 
@@ -635,7 +672,7 @@ impl EntityInputHandler for Editor {
         let new_pos = range.start + new_text.len();
         self.selected_range = new_pos..new_pos;
         self.marked_range.take();
-        self.cursor_last_moved = Instant::now();
+        self.pause_blinking(cx);
         self.fire_change(window, cx);
         cx.notify();
     }
@@ -807,7 +844,7 @@ impl Element for EditorLineElement {
         cx: &mut App,
     ) -> Self::PrepaintState {
         // Extract everything we need from the editor, then drop the borrow
-        let (line_text_owned, theme_text, selected_range, cursor_off, line_start, marked_range, lh, cursor_last_moved) = {
+        let (line_text_owned, theme_text, selected_range, cursor_off, line_start, marked_range, lh, cursor_visible) = {
             let editor = self.editor.read(cx);
             let lines: Vec<&str> = editor.content.split('\n').collect();
             let lt = lines.get(self.line_index).copied().unwrap_or("").to_string();
@@ -820,13 +857,9 @@ impl Element for EditorLineElement {
                 ls,
                 editor.marked_range.clone(),
                 editor.line_height,
-                editor.cursor_last_moved,
+                editor.cursor_visible,
             )
         };
-
-        // Cursor blink: visible for 500ms, hidden for 500ms
-        let elapsed_ms = cursor_last_moved.elapsed().as_millis();
-        let cursor_visible = (elapsed_ms % 1000) < 500;
 
         let ws = window.text_style();
         let is_header = line_text_owned.starts_with('#');
@@ -945,7 +978,7 @@ impl Element for EditorLineElement {
                 if let Some(pos) = wrapped.position_for_index(local_col, lh) {
                     Some(fill(
                         Bounds::new(
-                            point(bounds.left() + pos.x, bounds.top() + pos.y),
+                            point(bounds.left() + pos.x + px(1.), bounds.top() + pos.y),
                             size(px(2.), lh),
                         ),
                         cursor_color,
