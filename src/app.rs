@@ -201,10 +201,7 @@ impl NumNumApp {
 
         // Wire up on_save callback: settings pane -> app
         let results_pane_for_save = results_pane.clone();
-        let editor_for_theme = editor.clone();
-        let status_for_theme = status_bar.clone();
         let settings_pane_clone = settings_pane.clone();
-        let settings_pane_for_theme = settings_pane.clone();
         cx.observe(&settings_pane_clone, move |this, settings_entity, cx| {
             let pane = settings_entity.read(cx);
             let new_settings = pane.current_settings();
@@ -223,13 +220,7 @@ impl NumNumApp {
                 };
                 let tf = numnum_core::ThemeFile::load(&theme_name);
                 let new_theme = crate::theme::Theme::from_theme_file(&tf);
-                this.theme = new_theme.clone();
-
-                // Propagate theme to all child components
-                editor_for_theme.update(cx, |ed, _| { ed.theme = new_theme.clone(); });
-                results_pane_for_save.update(cx, |rp, _| { rp.theme = new_theme.clone(); });
-                status_for_theme.update(cx, |sb, _| { sb.theme = new_theme.clone(); });
-                settings_pane_for_theme.update(cx, |sp, _| { sp.theme = new_theme.clone(); });
+                this.apply_theme(new_theme, cx);
             }
 
             // Update results pane copy_full_precision
@@ -261,6 +252,15 @@ impl NumNumApp {
 }
 
 impl NumNumApp {
+    pub fn apply_theme(&mut self, new_theme: crate::theme::Theme, cx: &mut Context<Self>) {
+        self.theme = new_theme.clone();
+        self.editor.update(cx, |ed, _| { ed.theme = new_theme.clone(); });
+        self.results_pane.update(cx, |rp, _| { rp.theme = new_theme.clone(); });
+        self.status_bar.update(cx, |sb, _| { sb.theme = new_theme.clone(); });
+        self.settings_pane.update(cx, |sp, _| { sp.theme = new_theme.clone(); });
+        cx.notify();
+    }
+
     fn on_divider_down(&mut self, _: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
         self.is_dragging_divider = true;
         cx.notify();

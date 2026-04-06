@@ -104,7 +104,7 @@ fn main() {
         let appearance_mode = settings.appearance.mode.clone();
         let dark_theme_name = settings.appearance.dark_theme.clone();
         let light_theme_name = settings.appearance.light_theme.clone();
-        let pre_window_theme = theme.clone();
+        let _pre_window_theme = theme.clone();
 
         let _window_handle = cx
             .open_window(
@@ -117,16 +117,13 @@ fn main() {
                 move |window, cx| {
                     window.set_rem_size(px(font_size));
 
-                    // If auto mode, resolve the theme based on window appearance
-                    let actual_theme = if appearance_mode == "auto" {
-                        let is_dark = matches!(
-                            window.appearance(),
-                            WindowAppearance::Dark | WindowAppearance::VibrantDark
-                        );
-                        let name = if is_dark { &dark_theme_name } else { &light_theme_name };
-                        Theme::from_theme_file(&ThemeFile::load(name))
-                    } else {
-                        pre_window_theme
+                    // For auto mode, start with dark theme (default).
+                    // The async XDG portal detection will fire later via
+                    // observe_window_appearance and update the theme.
+                    let actual_theme = match appearance_mode.as_str() {
+                        "light" => Theme::from_theme_file(&ThemeFile::load(&light_theme_name)),
+                        "dark" => Theme::from_theme_file(&ThemeFile::load(&dark_theme_name)),
+                        _ => Theme::from_theme_file(&ThemeFile::load(&dark_theme_name)),
                     };
 
                     cx.new(|cx| NumNumApp::new(cx, actual_theme, settings_clone, rates_clone))
@@ -134,10 +131,26 @@ fn main() {
             )
             .expect("Failed to open window");
 
-        // Focus the editor on startup
+        // Focus the editor on startup + set up auto appearance observer
+        let auto_mode = settings.appearance.mode == "auto";
+        let dark_name = settings.appearance.dark_theme.clone();
+        let light_name = settings.appearance.light_theme.clone();
         _window_handle
             .update(cx, |app, window, cx| {
                 window.focus(&app.editor.focus_handle(cx), cx);
+
+                if auto_mode {
+                    cx.observe_window_appearance(window, move |this: &mut NumNumApp, window, cx| {
+                        let is_dark = matches!(
+                            window.appearance(),
+                            WindowAppearance::Dark | WindowAppearance::VibrantDark
+                        );
+                        let name = if is_dark { &dark_name } else { &light_name };
+                        let tf = ThemeFile::load(name);
+                        let new_theme = Theme::from_theme_file(&tf);
+                        this.apply_theme(new_theme, cx);
+                    }).detach();
+                }
             })
             .ok();
     });
