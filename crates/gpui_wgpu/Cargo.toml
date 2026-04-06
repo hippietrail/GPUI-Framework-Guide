@@ -17,7 +17,7 @@ gpui = { path = "../gpui" }
 anyhow = "1.0.86"
 bytemuck = "1"
 collections = { path = "../collections" }
-cosmic-text = { path = "/home/rudrabhoj/Dev/cosmic-text" }
+cosmic-text = { git = "https://github.com/FreeBSDFixes/cosmic-text", branch = "update-fontdb" }
 etagere = "0.2"
 itertools = "0.14.0"
 log = { version = "0.4.16", features = ["kv_unstable_serde", "serde"] }
