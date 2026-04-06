@@ -1640,7 +1640,9 @@ impl Render for Editor {
                             .w_full()
                             .when_some(row_bg, |el, bg| el.bg(bg))
                             .child(
-                                // Line number gutter — aligned to bottom for wrapped lines
+                                // Line number gutter — last visual line, baseline-aligned
+                                // We match the editor's line_height so both texts share
+                                // the same vertical center within each row.
                                 div()
                                     .w(gutter_w)
                                     .h(row_height)
@@ -1649,9 +1651,16 @@ impl Render for Editor {
                                     .items_end()
                                     .justify_end()
                                     .pr(gutter_pad)
-                                    .text_size(self.font_size * 0.7)
-                                    .text_color(dimmed)
-                                    .child(format!("{}", i + 1)),
+                                    .child(
+                                        div()
+                                            .h(lh)
+                                            .flex()
+                                            .items_center()
+                                            .text_size(self.font_size * 0.7)
+                                            .line_height(lh)
+                                            .text_color(dimmed)
+                                            .child(format!("{}", i + 1))
+                                    ),
                             )
                             .child(
                                 // The editor line itself
