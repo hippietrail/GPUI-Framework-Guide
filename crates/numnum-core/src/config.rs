@@ -8,6 +8,13 @@ use std::path::PathBuf;
 pub struct Settings {
     pub appearance: AppearanceSettings,
     pub editor: EditorSettings,
+    pub window: WindowSettings,
+}
+
+#[derive(Debug, Clone)]
+pub struct WindowSettings {
+    pub width: f32,
+    pub height: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -510,6 +517,10 @@ impl Settings {
                 precision: get_u32("editor", "precision", 2),
                 show_diagnostics: get_bool("editor", "show_diagnostics", true),
             },
+            window: WindowSettings {
+                width: get_f32("window", "width", 680.0),
+                height: get_f32("window", "height", 620.0),
+            },
         }
     }
 
@@ -541,6 +552,10 @@ default_ratio = {split_ratio}
 
 [editor.clipboard]
 full_precision = {full_precision}
+
+[window]
+width = {win_width}
+height = {win_height}
 "#,
             mode = a.mode,
             dark_theme = a.dark_theme,
@@ -554,6 +569,8 @@ full_precision = {full_precision}
             show_diagnostics = e.show_diagnostics,
             split_ratio = e.split_ratio,
             full_precision = e.copy_full_precision,
+            win_width = self.window.width,
+            win_height = self.window.height,
         );
         let _ = std::fs::write(&path, toml);
     }
@@ -577,6 +594,10 @@ impl Default for Settings {
                 copy_full_precision: true,
                 precision: 2,
                 show_diagnostics: true,
+            },
+            window: WindowSettings {
+                width: 680.0,
+                height: 620.0,
             },
         }
     }

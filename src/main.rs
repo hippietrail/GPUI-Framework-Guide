@@ -66,7 +66,7 @@ fn main() {
     }
 
     application().run(move |cx: &mut App| {
-        let bounds = Bounds::centered(None, size(px(900.0), px(640.0)), cx);
+        let bounds = Bounds::centered(None, size(px(settings.window.width), px(settings.window.height)), cx);
 
         // Bind key bindings for the Editor context
         cx.bind_keys([
@@ -154,6 +154,19 @@ fn main() {
                         this.apply_theme(new_theme, cx);
                     }).detach();
                 }
+
+                // Save window size on resize
+                cx.observe_window_bounds(window, |_this: &mut NumNumApp, window, _cx| {
+                    let size = window.viewport_size();
+                    let w: f32 = size.width.into();
+                    let h: f32 = size.height.into();
+                    if w > 100.0 && h > 100.0 {
+                        let mut s = Settings::load();
+                        s.window.width = w;
+                        s.window.height = h;
+                        s.save();
+                    }
+                }).detach();
             })
             .ok();
     });
