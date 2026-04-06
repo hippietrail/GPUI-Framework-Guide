@@ -227,6 +227,7 @@ impl Editor {
         let new_pos = range.start + 1;
         self.selected_range = new_pos..new_pos;
         self.marked_range.take();
+        self.pause_blinking(cx);
         self.fire_change(window, cx);
         cx.notify();
     }
@@ -346,6 +347,7 @@ impl Editor {
             });
             self.content = entry.content;
             self.selected_range = entry.selected_range;
+            self.pause_blinking(cx);
             self.fire_change(window, cx);
             cx.notify();
         }
@@ -359,6 +361,7 @@ impl Editor {
             });
             self.content = entry.content;
             self.selected_range = entry.selected_range;
+            self.pause_blinking(cx);
             self.fire_change(window, cx);
             cx.notify();
         }
@@ -978,7 +981,7 @@ impl Element for EditorLineElement {
                 if let Some(pos) = wrapped.position_for_index(local_col, lh) {
                     Some(fill(
                         Bounds::new(
-                            point(bounds.left() + pos.x + px(1.), bounds.top() + pos.y),
+                            point(bounds.left() + pos.x + px(2.), bounds.top() + pos.y),
                             size(px(2.), lh),
                         ),
                         cursor_color,
