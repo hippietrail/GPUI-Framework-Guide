@@ -98,6 +98,23 @@ impl SettingsPane {
         cx.notify();
     }
 
+    fn cycle_appearance_mode(&mut self, cx: &mut Context<Self>) {
+        let next = match self.settings.appearance.mode.as_str() {
+            "auto" => "dark",
+            "dark" => "light",
+            _ => "auto",
+        };
+        self.settings.appearance.mode = next.to_string();
+        self.settings.save();
+        cx.notify();
+    }
+
+    fn toggle_show_diagnostics(&mut self, cx: &mut Context<Self>) {
+        self.settings.editor.show_diagnostics = !self.settings.editor.show_diagnostics;
+        self.settings.save();
+        cx.notify();
+    }
+
     fn toggle_font_list(&mut self, cx: &mut Context<Self>) {
         self.font_list_open = !self.font_list_open;
         cx.notify();
@@ -168,6 +185,12 @@ impl Render for SettingsPane {
         let line_height_val = format!("{}", settings.editor.line_height);
         let tab_size_val = format!("{}", settings.editor.tab_size);
         let copy_fp_val = if settings.editor.copy_full_precision { "Yes" } else { "No" };
+        let appearance_val = match settings.appearance.mode.as_str() {
+            "dark" => "Dark",
+            "light" => "Light",
+            _ => "Auto",
+        };
+        let show_diag_val = if settings.editor.show_diagnostics { "Yes" } else { "No" };
 
         // Build font list dropdown if open
         let font_list_open = self.font_list_open;
@@ -498,6 +521,44 @@ impl Render for SettingsPane {
                                                 this.inc_tab_size(cx);
                                             }),
                                         ),
+                                ),
+                        ),
+                    )
+                    // Appearance (click cycles Auto -> Dark -> Light -> Auto)
+                    .child(
+                        setting_row(
+                            &theme,
+                            "Appearance",
+                            div()
+                                .id("appearance-toggle")
+                                .cursor_pointer()
+                                .text_color(theme.text)
+                                .hover(|s| s.text_color(theme.text_muted))
+                                .child(appearance_val.to_string())
+                                .on_mouse_up(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                        this.cycle_appearance_mode(cx);
+                                    }),
+                                ),
+                        ),
+                    )
+                    // Show Diagnostics (toggle Yes/No)
+                    .child(
+                        setting_row(
+                            &theme,
+                            "Show Diagnostics",
+                            div()
+                                .id("diag-toggle")
+                                .cursor_pointer()
+                                .text_color(theme.text)
+                                .hover(|s| s.text_color(theme.text_muted))
+                                .child(show_diag_val.to_string())
+                                .on_mouse_up(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                        this.toggle_show_diagnostics(cx);
+                                    }),
                                 ),
                         ),
                     ),

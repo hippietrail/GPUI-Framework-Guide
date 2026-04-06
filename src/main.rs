@@ -6,9 +6,9 @@ mod settings_pane;
 mod status_bar;
 mod theme;
 
-use gpui::{App, Bounds, Focusable, KeyBinding, WindowBounds, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, Focusable, KeyBinding, WindowAppearance, WindowBounds, WindowOptions, prelude::*, px, size};
 use gpui_platform::application;
-use numnum_core::Settings;
+use numnum_core::{Settings, ThemeFile};
 
 use crate::app::NumNumApp;
 use crate::editor::*;
@@ -17,7 +17,20 @@ use crate::theme::Theme;
 
 fn main() {
     let settings = Settings::load();
-    let theme = Theme::from_settings(&settings);
+    numnum_core::config::ensure_default_themes();
+
+    // Determine which theme to use based on appearance mode
+    let theme_name = match settings.appearance.mode.as_str() {
+        "dark" => settings.appearance.dark_theme.clone(),
+        "light" => settings.appearance.light_theme.clone(),
+        _ => {
+            // "auto" — will be resolved inside the window callback
+            // using window.appearance(); default to dark for pre-window
+            settings.appearance.dark_theme.clone()
+        }
+    };
+    let theme_file = ThemeFile::load(&theme_name);
+    let theme = Theme::from_theme_file(&theme_file);
 
     // Start with hardcoded rates (instant), load cached + live in background
     let live_rates = std::sync::Arc::new(std::sync::Mutex::new(
@@ -83,10 +96,16 @@ fn main() {
             KeyBinding::new("escape", EscapeSettings, Some("SettingsPane")),
         ]);
 
-        let theme_clone = theme.clone();
         let font_size = settings.editor.font_size;
         let settings_clone = settings.clone();
         let rates_clone = live_rates.clone();
+
+        // Resolve auto mode inside the window callback where we have access to window appearance
+        let appearance_mode = settings.appearance.mode.clone();
+        let dark_theme_name = settings.appearance.dark_theme.clone();
+        let light_theme_name = settings.appearance.light_theme.clone();
+        let pre_window_theme = theme.clone();
+
         let _window_handle = cx
             .open_window(
                 WindowOptions {
@@ -97,7 +116,20 @@ fn main() {
                 },
                 move |window, cx| {
                     window.set_rem_size(px(font_size));
-                    cx.new(|cx| NumNumApp::new(cx, theme_clone, settings_clone, rates_clone))
+
+                    // If auto mode, resolve the theme based on window appearance
+                    let actual_theme = if appearance_mode == "auto" {
+                        let is_dark = matches!(
+                            window.appearance(),
+                            WindowAppearance::Dark | WindowAppearance::VibrantDark
+                        );
+                        let name = if is_dark { &dark_theme_name } else { &light_theme_name };
+                        Theme::from_theme_file(&ThemeFile::load(name))
+                    } else {
+                        pre_window_theme
+                    };
+
+                    cx.new(|cx| NumNumApp::new(cx, actual_theme, settings_clone, rates_clone))
                 },
             )
             .expect("Failed to open window");

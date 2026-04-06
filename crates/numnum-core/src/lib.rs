@@ -7,4 +7,4 @@ pub mod config;
 
 pub use evaluator::{EvalContext, EvalError, evaluate_document};
 pub use types::Value;
-pub use config::Settings;
+pub use config::{Settings, ThemeFile};

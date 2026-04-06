@@ -1,5 +1,5 @@
 use gpui::{Hsla, Rgba, rgba};
-use numnum_core::config::{Color, Settings};
+use numnum_core::config::{Color, ThemeFile};
 
 /// Bridge between numnum_core::config colors and GPUI Hsla colors.
 #[derive(Debug, Clone)]
@@ -40,22 +40,22 @@ fn color_to_hsla(c: Color) -> Hsla {
 }
 
 impl Theme {
-    pub fn from_settings(settings: &Settings) -> Self {
-        let t = &settings.theme;
-        let s = &t.syntax;
+    pub fn from_theme_file(tf: &ThemeFile) -> Self {
+        let c = &tf.colors;
+        let s = &tf.syntax;
         Theme {
-            background: color_to_hsla(t.background),
-            editor_background: color_to_hsla(t.editor_background),
-            _gutter: color_to_hsla(t.gutter),
-            _status_bar: color_to_hsla(t.status_bar),
-            divider: color_to_hsla(t.divider),
-            cursor: color_to_hsla(t.cursor),
-            selection: color_to_hsla(t.selection),
-            text: color_to_hsla(t.text),
-            text_muted: color_to_hsla(t.text_muted),
-            text_dimmed: color_to_hsla(t.text_dimmed),
-            result: color_to_hsla(t.result),
-            error: color_to_hsla(t.error),
+            background: color_to_hsla(c.background),
+            editor_background: color_to_hsla(c.editor_background),
+            _gutter: color_to_hsla(c.gutter),
+            _status_bar: color_to_hsla(c.status_bar),
+            divider: color_to_hsla(c.divider),
+            cursor: color_to_hsla(c.cursor),
+            selection: color_to_hsla(c.selection),
+            text: color_to_hsla(c.text),
+            text_muted: color_to_hsla(c.text_muted),
+            text_dimmed: color_to_hsla(c.text_dimmed),
+            result: color_to_hsla(c.result),
+            error: color_to_hsla(c.error),
 
             syn_number: color_to_hsla(s.number),
             syn_operator: color_to_hsla(s.operator),

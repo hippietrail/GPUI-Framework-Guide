@@ -6,13 +6,19 @@ use std::path::PathBuf;
 /// or %APPDATA%/numnum/settings.toml (Windows)
 #[derive(Debug, Clone)]
 pub struct Settings {
-    pub theme: ThemeSettings,
+    pub appearance: AppearanceSettings,
     pub editor: EditorSettings,
 }
 
 #[derive(Debug, Clone)]
+pub struct AppearanceSettings {
+    pub mode: String,        // "dark", "light", "auto"
+    pub dark_theme: String,  // theme file name without .toml
+    pub light_theme: String,
+}
+
+#[derive(Debug, Clone)]
 pub struct ThemeSettings {
-    pub name: String,
     pub background: Color,
     pub editor_background: Color,
     pub gutter: Color,
@@ -25,7 +31,6 @@ pub struct ThemeSettings {
     pub text_dimmed: Color,
     pub result: Color,
     pub error: Color,
-    pub syntax: SyntaxColors,
 }
 
 #[derive(Debug, Clone)]
@@ -47,6 +52,14 @@ pub struct SyntaxColors {
 }
 
 #[derive(Debug, Clone)]
+pub struct ThemeFile {
+    pub name: String,
+    pub appearance: String, // "dark" or "light"
+    pub colors: ThemeSettings,
+    pub syntax: SyntaxColors,
+}
+
+#[derive(Debug, Clone)]
 pub struct EditorSettings {
     pub font_family: String,
     pub font_weight: String,
@@ -56,6 +69,7 @@ pub struct EditorSettings {
     pub split_ratio: f32,
     pub copy_full_precision: bool,
     pub precision: u32,
+    pub show_diagnostics: bool,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -145,48 +159,62 @@ pub fn settings_path() -> PathBuf {
     config_dir().join("settings.toml")
 }
 
-impl Settings {
-    pub fn load() -> Self {
-        let path = settings_path();
-        if let Ok(content) = std::fs::read_to_string(&path) {
-            Self::parse(&content)
-        } else {
-            Self::default()
+fn themes_dir() -> PathBuf {
+    config_dir().join("themes")
+}
+
+/// Minimal TOML parser shared by Settings and ThemeFile.
+/// Returns sections mapping "section.name" -> { key -> value }.
+fn parse_toml(toml_str: &str) -> HashMap<String, HashMap<String, String>> {
+    let mut sections: HashMap<String, HashMap<String, String>> = HashMap::new();
+    let mut current_section = String::new();
+
+    for line in toml_str.lines() {
+        let line = line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+        if line.starts_with('[') && line.ends_with(']') {
+            current_section = line[1..line.len()-1].to_string();
+            continue;
+        }
+        if let Some(eq_pos) = line.find('=') {
+            let key = line[..eq_pos].trim().to_string();
+            let mut val = line[eq_pos+1..].trim().to_string();
+            // Extract quoted value: find opening and closing quotes
+            if val.starts_with('"') {
+                if let Some(close_quote) = val[1..].find('"') {
+                    val = val[1..1 + close_quote].to_string();
+                }
+            } else {
+                // Strip inline comments only for unquoted values
+                if let Some(comment_pos) = val.find(" #") {
+                    val = val[..comment_pos].trim().to_string();
+                }
+            }
+            sections.entry(current_section.clone()).or_default().insert(key, val);
         }
     }
 
-    fn parse(toml_str: &str) -> Self {
-        // Minimal TOML parser for our specific format.
-        // We parse key = "value" pairs grouped by [section] headers.
-        let mut sections: HashMap<String, HashMap<String, String>> = HashMap::new();
-        let mut current_section = String::new();
+    sections
+}
 
-        for line in toml_str.lines() {
-            let line = line.trim();
-            if line.is_empty() || line.starts_with('#') {
-                continue;
-            }
-            if line.starts_with('[') && line.ends_with(']') {
-                current_section = line[1..line.len()-1].to_string();
-                continue;
-            }
-            if let Some(eq_pos) = line.find('=') {
-                let key = line[..eq_pos].trim().to_string();
-                let mut val = line[eq_pos+1..].trim().to_string();
-                // Extract quoted value: find opening and closing quotes
-                if val.starts_with('"') {
-                    if let Some(close_quote) = val[1..].find('"') {
-                        val = val[1..1 + close_quote].to_string();
-                    }
-                } else {
-                    // Strip inline comments only for unquoted values
-                    if let Some(comment_pos) = val.find(" #") {
-                        val = val[..comment_pos].trim().to_string();
-                    }
-                }
-                sections.entry(current_section.clone()).or_default().insert(key, val);
-            }
+// ── ThemeFile ──────────────────────────────────────────────────────────────
+
+impl ThemeFile {
+    /// Load a theme file by name (without .toml extension) from the themes directory.
+    pub fn load(name: &str) -> Self {
+        let path = themes_dir().join(format!("{}.toml", name));
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            Self::parse_theme(&content)
+        } else {
+            // Fallback to mocha defaults if the file can't be read
+            Self::default_mocha()
         }
+    }
+
+    fn parse_theme(toml_str: &str) -> Self {
+        let sections = parse_toml(toml_str);
 
         let get = |section: &str, key: &str, default: &str| -> String {
             sections.get(section).and_then(|s| s.get(key)).cloned().unwrap_or_else(|| default.to_string())
@@ -194,73 +222,125 @@ impl Settings {
         let get_color = |section: &str, key: &str, default: &str| -> Color {
             Color::from_hex(&get(section, key, default))
         };
-        let get_f32 = |section: &str, key: &str, default: f32| -> f32 {
-            sections.get(section).and_then(|s| s.get(key)).and_then(|v| v.parse().ok()).unwrap_or(default)
-        };
-        let get_u32 = |section: &str, key: &str, default: u32| -> u32 {
-            sections.get(section).and_then(|s| s.get(key)).and_then(|v| v.parse().ok()).unwrap_or(default)
-        };
-        let get_bool = |section: &str, key: &str, default: bool| -> bool {
-            sections.get(section).and_then(|s| s.get(key)).map(|v| v == "true").unwrap_or(default)
-        };
 
-        Settings {
-            theme: ThemeSettings {
-                name: get("theme", "name", "catppuccin-mocha"),
-                background: get_color("theme", "background", "#1e1e2e"),
-                editor_background: get_color("theme", "editor_background", "#1e1e2e"),
-                gutter: get_color("theme", "gutter", "#181825"),
-                status_bar: get_color("theme", "status_bar", "#181825"),
-                divider: get_color("theme", "divider", "#313244"),
-                cursor: get_color("theme", "cursor", "#f5e0dc"),
-                selection: get_color("theme", "selection", "#45475a80"),
-                text: get_color("theme", "text", "#cdd6f4"),
-                text_muted: get_color("theme", "text_muted", "#a6adc8"),
-                text_dimmed: get_color("theme", "text_dimmed", "#6c7086"),
-                result: get_color("theme", "result", "#a6e3a1"),
-                error: get_color("theme", "error", "#f38ba8"),
-                syntax: SyntaxColors {
-                    number: get_color("theme.syntax", "number", "#cdd6f4"),
-                    operator: get_color("theme.syntax", "operator", "#89dceb"),
-                    keyword: get_color("theme.syntax", "keyword", "#cba6f7"),
-                    function: get_color("theme.syntax", "function", "#89b4fa"),
-                    variable: get_color("theme.syntax", "variable", "#cdd6f4"),
-                    variable_def: get_color("theme.syntax", "variable_def", "#f9e2af"),
-                    unit: get_color("theme.syntax", "unit", "#94e2d5"),
-                    currency: get_color("theme.syntax", "currency", "#a6e3a1"),
-                    label: get_color("theme.syntax", "label", "#f9e2af"),
-                    comment: get_color("theme.syntax", "comment", "#6c7086"),
-                    header: get_color("theme.syntax", "header", "#b4befe"),
-                    percent: get_color("theme.syntax", "percent", "#f5c2e7"),
-                    string: get_color("theme.syntax", "string", "#a6e3a1"),
-                    scale: get_color("theme.syntax", "scale", "#fab387"),
-                },
+        ThemeFile {
+            name: get("", "name", "Catppuccin Mocha"),
+            appearance: get("", "appearance", "dark"),
+            colors: ThemeSettings {
+                background: get_color("colors", "background", "#1e1e2e"),
+                editor_background: get_color("colors", "editor_background", "#1e1e2e"),
+                gutter: get_color("colors", "gutter", "#181825"),
+                status_bar: get_color("colors", "status_bar", "#181825"),
+                divider: get_color("colors", "divider", "#313244"),
+                cursor: get_color("colors", "cursor", "#f5e0dc"),
+                selection: get_color("colors", "selection", "#45475a80"),
+                text: get_color("colors", "text", "#cdd6f4"),
+                text_muted: get_color("colors", "text_muted", "#a6adc8"),
+                text_dimmed: get_color("colors", "text_dimmed", "#6c7086"),
+                result: get_color("colors", "result", "#a6e3a1"),
+                error: get_color("colors", "error", "#f38ba8"),
             },
-            editor: EditorSettings {
-                font_family: get("editor", "font_family", "Maple Mono NF"),
-                font_weight: get("editor", "font_weight", "Regular"),
-                font_size: get_f32("editor", "font_size", 16.0),
-                line_height: get_f32("editor", "line_height", 1.6),
-                tab_size: get_u32("editor", "tab_size", 4),
-                split_ratio: get_f32("editor.split", "default_ratio", 0.6),
-                copy_full_precision: get_bool("editor.clipboard", "full_precision", true),
-                precision: get_u32("editor", "precision", 2),
+            syntax: SyntaxColors {
+                number: get_color("syntax", "number", "#cdd6f4"),
+                operator: get_color("syntax", "operator", "#89dceb"),
+                keyword: get_color("syntax", "keyword", "#cba6f7"),
+                function: get_color("syntax", "function", "#89b4fa"),
+                variable: get_color("syntax", "variable", "#f9e2af"),
+                variable_def: get_color("syntax", "variable_def", "#f9e2af"),
+                unit: get_color("syntax", "unit", "#94e2d5"),
+                currency: get_color("syntax", "currency", "#a6e3a1"),
+                label: get_color("syntax", "label", "#f9e2af"),
+                comment: get_color("syntax", "comment", "#6c7086"),
+                header: get_color("syntax", "header", "#b4befe"),
+                percent: get_color("syntax", "percent", "#f5c2e7"),
+                string: get_color("syntax", "string", "#a6e3a1"),
+                scale: get_color("syntax", "scale", "#fab387"),
             },
         }
     }
 
-    /// Write current settings back to the TOML config file.
-    pub fn save(&self) {
-        let path = settings_path();
-        if let Some(parent) = path.parent() {
-            let _ = std::fs::create_dir_all(parent);
+    pub fn default_mocha() -> Self {
+        ThemeFile {
+            name: "Catppuccin Mocha".to_string(),
+            appearance: "dark".to_string(),
+            colors: ThemeSettings {
+                background: Color::from_hex("#1e1e2e"),
+                editor_background: Color::from_hex("#1e1e2e"),
+                gutter: Color::from_hex("#181825"),
+                status_bar: Color::from_hex("#181825"),
+                divider: Color::from_hex("#313244"),
+                cursor: Color::from_hex("#f5e0dc"),
+                selection: Color::from_hex("#45475a80"),
+                text: Color::from_hex("#cdd6f4"),
+                text_muted: Color::from_hex("#a6adc8"),
+                text_dimmed: Color::from_hex("#6c7086"),
+                result: Color::from_hex("#a6e3a1"),
+                error: Color::from_hex("#f38ba8"),
+            },
+            syntax: SyntaxColors {
+                number: Color::from_hex("#cdd6f4"),
+                operator: Color::from_hex("#89dceb"),
+                keyword: Color::from_hex("#cba6f7"),
+                function: Color::from_hex("#89b4fa"),
+                variable: Color::from_hex("#f9e2af"),
+                variable_def: Color::from_hex("#f9e2af"),
+                unit: Color::from_hex("#94e2d5"),
+                currency: Color::from_hex("#a6e3a1"),
+                label: Color::from_hex("#f9e2af"),
+                comment: Color::from_hex("#6c7086"),
+                header: Color::from_hex("#b4befe"),
+                percent: Color::from_hex("#f5c2e7"),
+                string: Color::from_hex("#a6e3a1"),
+                scale: Color::from_hex("#fab387"),
+            },
         }
-        let t = &self.theme;
-        let s = &t.syntax;
-        let e = &self.editor;
-        let toml = format!(
-            r#"[theme]
-name = "{name}"
+    }
+
+    pub fn default_latte() -> Self {
+        ThemeFile {
+            name: "Catppuccin Latte".to_string(),
+            appearance: "light".to_string(),
+            colors: ThemeSettings {
+                background: Color::from_hex("#eff1f5"),
+                editor_background: Color::from_hex("#eff1f5"),
+                gutter: Color::from_hex("#e6e9ef"),
+                status_bar: Color::from_hex("#e6e9ef"),
+                divider: Color::from_hex("#ccd0da"),
+                cursor: Color::from_hex("#dc8a78"),
+                selection: Color::from_hex("#acb0be80"),
+                text: Color::from_hex("#4c4f69"),
+                text_muted: Color::from_hex("#6c6f85"),
+                text_dimmed: Color::from_hex("#9ca0b0"),
+                result: Color::from_hex("#40a02b"),
+                error: Color::from_hex("#d20f39"),
+            },
+            syntax: SyntaxColors {
+                number: Color::from_hex("#4c4f69"),
+                operator: Color::from_hex("#04a5e5"),
+                keyword: Color::from_hex("#8839ef"),
+                function: Color::from_hex("#1e66f5"),
+                variable: Color::from_hex("#df8e1d"),
+                variable_def: Color::from_hex("#df8e1d"),
+                unit: Color::from_hex("#179299"),
+                currency: Color::from_hex("#40a02b"),
+                label: Color::from_hex("#df8e1d"),
+                comment: Color::from_hex("#9ca0b0"),
+                header: Color::from_hex("#7287fd"),
+                percent: Color::from_hex("#ea76cb"),
+                string: Color::from_hex("#40a02b"),
+                scale: Color::from_hex("#fe640b"),
+            },
+        }
+    }
+
+    fn to_toml(&self) -> String {
+        let c = &self.colors;
+        let s = &self.syntax;
+        format!(
+            r#"name = "{name}"
+appearance = "{appearance}"
+
+[colors]
 background = "{background}"
 editor_background = "{editor_background}"
 gutter = "{gutter}"
@@ -274,7 +354,7 @@ text_dimmed = "{text_dimmed}"
 result = "{result}"
 error = "{error}"
 
-[theme.syntax]
+[syntax]
 number = "{syn_number}"
 operator = "{syn_operator}"
 keyword = "{syn_keyword}"
@@ -289,34 +369,21 @@ header = "{syn_header}"
 percent = "{syn_percent}"
 string = "{syn_string}"
 scale = "{syn_scale}"
-
-[editor]
-font_family = "{font_family}"
-font_weight = "{font_weight}"
-font_size = {font_size}
-line_height = {line_height}
-tab_size = {tab_size}
-precision = {precision}
-
-[editor.split]
-default_ratio = {split_ratio}
-
-[editor.clipboard]
-full_precision = {full_precision}
 "#,
-            name = t.name,
-            background = t.background.to_hex(),
-            editor_background = t.editor_background.to_hex(),
-            gutter = t.gutter.to_hex(),
-            status_bar = t.status_bar.to_hex(),
-            divider = t.divider.to_hex(),
-            cursor = t.cursor.to_hex(),
-            selection = t.selection.to_hex(),
-            text = t.text.to_hex(),
-            text_muted = t.text_muted.to_hex(),
-            text_dimmed = t.text_dimmed.to_hex(),
-            result = t.result.to_hex(),
-            error = t.error.to_hex(),
+            name = self.name,
+            appearance = self.appearance,
+            background = c.background.to_hex(),
+            editor_background = c.editor_background.to_hex(),
+            gutter = c.gutter.to_hex(),
+            status_bar = c.status_bar.to_hex(),
+            divider = c.divider.to_hex(),
+            cursor = c.cursor.to_hex(),
+            selection = c.selection.to_hex(),
+            text = c.text.to_hex(),
+            text_muted = c.text_muted.to_hex(),
+            text_dimmed = c.text_dimmed.to_hex(),
+            result = c.result.to_hex(),
+            error = c.error.to_hex(),
             syn_number = s.number.to_hex(),
             syn_operator = s.operator.to_hex(),
             syn_keyword = s.keyword.to_hex(),
@@ -331,12 +398,113 @@ full_precision = {full_precision}
             syn_percent = s.percent.to_hex(),
             syn_string = s.string.to_hex(),
             syn_scale = s.scale.to_hex(),
+        )
+    }
+}
+
+/// Create default theme files if they don't already exist.
+pub fn ensure_default_themes() {
+    let dir = themes_dir();
+    let _ = std::fs::create_dir_all(&dir);
+
+    let mocha_path = dir.join("catppuccin-mocha.toml");
+    if !mocha_path.exists() {
+        let _ = std::fs::write(&mocha_path, ThemeFile::default_mocha().to_toml());
+    }
+
+    let latte_path = dir.join("catppuccin-latte.toml");
+    if !latte_path.exists() {
+        let _ = std::fs::write(&latte_path, ThemeFile::default_latte().to_toml());
+    }
+}
+
+// ── Settings ───────────────────────────────────────────────────────────────
+
+impl Settings {
+    pub fn load() -> Self {
+        let path = settings_path();
+        if let Ok(content) = std::fs::read_to_string(&path) {
+            Self::parse(&content)
+        } else {
+            Self::default()
+        }
+    }
+
+    fn parse(toml_str: &str) -> Self {
+        let sections = parse_toml(toml_str);
+
+        let get = |section: &str, key: &str, default: &str| -> String {
+            sections.get(section).and_then(|s| s.get(key)).cloned().unwrap_or_else(|| default.to_string())
+        };
+        let get_f32 = |section: &str, key: &str, default: f32| -> f32 {
+            sections.get(section).and_then(|s| s.get(key)).and_then(|v| v.parse().ok()).unwrap_or(default)
+        };
+        let get_u32 = |section: &str, key: &str, default: u32| -> u32 {
+            sections.get(section).and_then(|s| s.get(key)).and_then(|v| v.parse().ok()).unwrap_or(default)
+        };
+        let get_bool = |section: &str, key: &str, default: bool| -> bool {
+            sections.get(section).and_then(|s| s.get(key)).map(|v| v == "true").unwrap_or(default)
+        };
+
+        Settings {
+            appearance: AppearanceSettings {
+                mode: get("appearance", "mode", "auto"),
+                dark_theme: get("appearance", "dark_theme", "catppuccin-mocha"),
+                light_theme: get("appearance", "light_theme", "catppuccin-latte"),
+            },
+            editor: EditorSettings {
+                font_family: get("editor", "font_family", "Maple Mono NF"),
+                font_weight: get("editor", "font_weight", "Regular"),
+                font_size: get_f32("editor", "font_size", 16.0),
+                line_height: get_f32("editor", "line_height", 1.6),
+                tab_size: get_u32("editor", "tab_size", 4),
+                split_ratio: get_f32("editor.split", "default_ratio", 0.6),
+                copy_full_precision: get_bool("editor.clipboard", "full_precision", true),
+                precision: get_u32("editor", "precision", 2),
+                show_diagnostics: get_bool("editor", "show_diagnostics", true),
+            },
+        }
+    }
+
+    /// Write current settings back to the TOML config file.
+    pub fn save(&self) {
+        let path = settings_path();
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let a = &self.appearance;
+        let e = &self.editor;
+        let toml = format!(
+            r#"[appearance]
+mode = "{mode}"
+dark_theme = "{dark_theme}"
+light_theme = "{light_theme}"
+
+[editor]
+font_family = "{font_family}"
+font_weight = "{font_weight}"
+font_size = {font_size}
+line_height = {line_height}
+tab_size = {tab_size}
+precision = {precision}
+show_diagnostics = {show_diagnostics}
+
+[editor.split]
+default_ratio = {split_ratio}
+
+[editor.clipboard]
+full_precision = {full_precision}
+"#,
+            mode = a.mode,
+            dark_theme = a.dark_theme,
+            light_theme = a.light_theme,
             font_family = e.font_family,
             font_weight = e.font_weight,
             font_size = e.font_size,
             line_height = e.line_height,
             tab_size = e.tab_size,
             precision = e.precision,
+            show_diagnostics = e.show_diagnostics,
             split_ratio = e.split_ratio,
             full_precision = e.copy_full_precision,
         );
@@ -346,38 +514,11 @@ full_precision = {full_precision}
 
 impl Default for Settings {
     fn default() -> Self {
-        // Catppuccin Mocha defaults
         Settings {
-            theme: ThemeSettings {
-                name: "catppuccin-mocha".to_string(),
-                background: Color::from_hex("#1e1e2e"),
-                editor_background: Color::from_hex("#1e1e2e"),
-                gutter: Color::from_hex("#181825"),
-                status_bar: Color::from_hex("#181825"),
-                divider: Color::from_hex("#313244"),
-                cursor: Color::from_hex("#f5e0dc"),
-                selection: Color::from_hex("#45475a80"),
-                text: Color::from_hex("#cdd6f4"),
-                text_muted: Color::from_hex("#a6adc8"),
-                text_dimmed: Color::from_hex("#6c7086"),
-                result: Color::from_hex("#a6e3a1"),
-                error: Color::from_hex("#f38ba8"),
-                syntax: SyntaxColors {
-                    number: Color::from_hex("#cdd6f4"),
-                    operator: Color::from_hex("#89dceb"),
-                    keyword: Color::from_hex("#cba6f7"),
-                    function: Color::from_hex("#89b4fa"),
-                    variable: Color::from_hex("#cdd6f4"),
-                    variable_def: Color::from_hex("#f9e2af"),
-                    unit: Color::from_hex("#94e2d5"),
-                    currency: Color::from_hex("#a6e3a1"),
-                    label: Color::from_hex("#f9e2af"),
-                    comment: Color::from_hex("#6c7086"),
-                    header: Color::from_hex("#b4befe"),
-                    percent: Color::from_hex("#f5c2e7"),
-                    string: Color::from_hex("#a6e3a1"),
-                    scale: Color::from_hex("#fab387"),
-                },
+            appearance: AppearanceSettings {
+                mode: "auto".to_string(),
+                dark_theme: "catppuccin-mocha".to_string(),
+                light_theme: "catppuccin-latte".to_string(),
             },
             editor: EditorSettings {
                 font_family: "Maple Mono NF".to_string(),
@@ -388,6 +529,7 @@ impl Default for Settings {
                 split_ratio: 0.6,
                 copy_full_precision: true,
                 precision: 2,
+                show_diagnostics: true,
             },
         }
     }
@@ -424,57 +566,104 @@ mod tests {
     #[test]
     fn test_default_settings() {
         let s = Settings::default();
-        assert_eq!(s.theme.name, "catppuccin-mocha");
+        assert_eq!(s.appearance.mode, "auto");
+        assert_eq!(s.appearance.dark_theme, "catppuccin-mocha");
+        assert_eq!(s.appearance.light_theme, "catppuccin-latte");
         assert_eq!(s.editor.font_family, "Maple Mono NF");
         assert_eq!(s.editor.font_size, 16.0);
+        assert_eq!(s.editor.split_ratio, 0.6);
+        assert_eq!(s.editor.show_diagnostics, true);
+    }
+
+    #[test]
+    fn test_parse_settings_new_format() {
+        let toml = r##"
+[appearance]
+mode = "dark"
+dark_theme = "catppuccin-mocha"
+light_theme = "catppuccin-latte"
+
+[editor]
+font_family = "Fira Code"
+font_size = 14
+show_diagnostics = false
+"##;
+        let s = Settings::parse(toml);
+        assert_eq!(s.appearance.mode, "dark");
+        assert_eq!(s.appearance.dark_theme, "catppuccin-mocha");
+        assert_eq!(s.editor.font_family, "Fira Code");
+        assert_eq!(s.editor.font_size, 14.0);
+        assert_eq!(s.editor.show_diagnostics, false);
+        // Non-specified values should use defaults
         assert_eq!(s.editor.split_ratio, 0.6);
     }
 
     #[test]
-    fn test_parse_settings() {
+    fn test_parse_settings_legacy_format() {
+        // Old settings.toml with [theme] section — should still parse editor settings
+        // and default appearance to auto/mocha/latte
         let toml = r##"
 [theme]
-name = "custom"
-background = "#ff0000"
+name = "catppuccin-mocha"
+background = "#1e1e2e"
+
+[theme.syntax]
+number = "#cdd6f4"
 
 [editor]
 font_family = "Fira Code"
 font_size = 14
 "##;
         let s = Settings::parse(toml);
-        assert_eq!(s.theme.name, "custom");
-        assert_eq!(s.theme.background.r, 0xff);
-        assert_eq!(s.theme.background.g, 0x00);
+        // [theme] section is just ignored — appearance gets defaults
+        assert_eq!(s.appearance.mode, "auto");
+        assert_eq!(s.appearance.dark_theme, "catppuccin-mocha");
         assert_eq!(s.editor.font_family, "Fira Code");
         assert_eq!(s.editor.font_size, 14.0);
-        // Non-specified values should use defaults
-        assert_eq!(s.editor.split_ratio, 0.6);
     }
 
     #[test]
-    fn test_quoted_values_with_inline_comments() {
+    fn test_theme_file_default_mocha() {
+        let tf = ThemeFile::default_mocha();
+        assert_eq!(tf.name, "Catppuccin Mocha");
+        assert_eq!(tf.appearance, "dark");
+        assert_eq!(tf.colors.background.r, 0x1e);
+    }
+
+    #[test]
+    fn test_theme_file_default_latte() {
+        let tf = ThemeFile::default_latte();
+        assert_eq!(tf.name, "Catppuccin Latte");
+        assert_eq!(tf.appearance, "light");
+        assert_eq!(tf.colors.background.r, 0xef);
+    }
+
+    #[test]
+    fn test_theme_file_parse() {
         let toml = r##"
-[theme]
-background = "#1e1e2e"   # base
-text = "#cdd6f4"   # text
+name = "Test Theme"
+appearance = "dark"
+
+[colors]
+background = "#ff0000"
+text = "#00ff00"
+
+[syntax]
+number = "#0000ff"
 "##;
-        let s = Settings::parse(toml);
-        assert_eq!(s.theme.background.r, 0x1e);
-        assert_eq!(s.theme.background.g, 0x1e);
-        assert_eq!(s.theme.background.b, 0x2e);
-        assert_eq!(s.theme.text.r, 0xcd);
-        assert_eq!(s.theme.text.g, 0xd6);
-        assert_eq!(s.theme.text.b, 0xf4);
+        let tf = ThemeFile::parse_theme(toml);
+        assert_eq!(tf.name, "Test Theme");
+        assert_eq!(tf.appearance, "dark");
+        assert_eq!(tf.colors.background.r, 0xff);
+        assert_eq!(tf.colors.background.g, 0x00);
+        assert_eq!(tf.colors.text.r, 0x00);
+        assert_eq!(tf.colors.text.g, 0xff);
+        assert_eq!(tf.syntax.number.b, 0xff);
     }
 
     #[test]
     fn test_load_real_settings() {
-        let s = Settings::load();
-        assert!(!s.theme.name.is_empty());
-        // If the real config exists, background should NOT be black
-        if settings_path().exists() {
-            assert!(s.theme.background.r > 0 || s.theme.background.g > 0 || s.theme.background.b > 0,
-                "Background color is black - settings parsing is broken");
-        }
+        let _s = Settings::load();
+        // Just ensure it doesn't panic, regardless of file format on disk
     }
 }

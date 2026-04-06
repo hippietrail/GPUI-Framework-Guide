@@ -66,6 +66,7 @@ pub struct Editor {
     currency_table: CurrencyTable,
     // Per-line diagnostics (error messages shown as inlay below the line)
     pub diagnostics: Vec<Option<String>>,
+    pub show_diagnostics: bool,
     // Per-line layout cache (rebuilt each frame)
     line_layouts: Vec<Option<WrappedLine>>,
     last_bounds: Option<Bounds<Pixels>>,
@@ -99,6 +100,7 @@ impl Editor {
             font_family: SharedString::from(font_family),
             font_size: px(font_size),
             diagnostics: Vec::new(),
+            show_diagnostics: true,
             unit_table: UnitTable::new(),
             currency_table: CurrencyTable::new(),
             line_layouts: Vec::new(),
@@ -1243,17 +1245,19 @@ impl Render for Editor {
                             .into_any_element(),
                     );
                     // Inlay diagnostic below error lines
-                    if let Some(Some(diag)) = self.diagnostics.get(i) {
-                        children.push(
-                            div()
-                                .w_full()
-                                .pl(gutter_w + gutter_pad)
-                                .py(px(2.))
-                                .text_size(self.font_size * 0.75)
-                                .text_color(error_color)
-                                .child(diag.clone())
-                                .into_any_element(),
-                        );
+                    if self.show_diagnostics {
+                        if let Some(Some(diag)) = self.diagnostics.get(i) {
+                            children.push(
+                                div()
+                                    .w_full()
+                                    .pl(gutter_w + gutter_pad)
+                                    .py(px(2.))
+                                    .text_size(self.font_size * 0.75)
+                                    .text_color(error_color)
+                                    .child(diag.clone())
+                                    .into_any_element(),
+                            );
+                        }
                     }
                 }
                 children

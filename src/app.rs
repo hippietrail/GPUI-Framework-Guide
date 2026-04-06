@@ -30,6 +30,8 @@ pub struct NumNumApp {
     is_dragging_divider: bool,
     scroll_handle: ScrollHandle,
     was_settings_visible: bool,
+    appearance_mode: String,
+    show_diagnostics: bool,
 }
 
 impl NumNumApp {
@@ -43,6 +45,8 @@ impl NumNumApp {
         let font_size = settings.editor.font_size;
         let copy_full_precision = settings.editor.copy_full_precision;
         let precision = settings.editor.precision;
+        let appearance_mode = settings.appearance.mode.clone();
+        let show_diagnostics = settings.editor.show_diagnostics;
 
         let results_pane = cx.new(|_| ResultsPane::new(theme.clone(), copy_full_precision));
 
@@ -64,7 +68,9 @@ impl NumNumApp {
         let font_for_app = font_family.clone();
 
         let editor = cx.new(|cx| {
-            Editor::new(cx, theme_clone, font_family, font_size, None)
+            let mut ed = Editor::new(cx, theme_clone, font_family, font_size, None);
+            ed.show_diagnostics = show_diagnostics;
+            ed
         });
 
         // Create scroll handle shared between observer and render
@@ -133,8 +139,13 @@ impl NumNumApp {
 
             // Update editor diagnostics (for inlay rendering)
             let visual_counts = editor_for_eval.read(cx).line_visual_counts.clone();
+            let show_diags = this.show_diagnostics;
             editor_for_eval.update(cx, |editor, _cx| {
-                editor.diagnostics = diagnostics.clone();
+                if show_diags {
+                    editor.diagnostics = diagnostics.clone();
+                } else {
+                    editor.diagnostics = vec![None; diagnostics.len()];
+                }
             });
 
             results_for_eval.update(cx, |pane, cx| {
@@ -196,6 +207,8 @@ impl NumNumApp {
             let new_settings = pane.current_settings();
             this.precision = new_settings.editor.precision;
             this.font_size = new_settings.editor.font_size;
+            this.appearance_mode = new_settings.appearance.mode.clone();
+            this.show_diagnostics = new_settings.editor.show_diagnostics;
             // Update results pane copy_full_precision
             let copy_fp = new_settings.editor.copy_full_precision;
             results_pane_for_save.update(cx, |rp, cx| {
@@ -218,6 +231,8 @@ impl NumNumApp {
             is_dragging_divider: false,
             was_settings_visible: false,
             scroll_handle,
+            appearance_mode,
+            show_diagnostics,
         }
     }
 }
