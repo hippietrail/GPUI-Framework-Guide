@@ -449,7 +449,7 @@ impl CurrencyTable {
         // --- South Asia (additional) ---
         self.add("BTN", "Nu. %@", 93.181617, &["bhutanese ngultrum", "ngultrum", "btn"]);
         self.add("MVR", "Rf %@", 15.449077, &["maldivian rufiyaa", "rufiyaa", "mvr"]);
-        self.add("AFN", "\u{060B} %@", 64.60017, &["afghan afghani", "afghani", "afn", "\u{060B}"]);
+        self.add("AFN", "Af %@", 64.60017, &["afghan afghani", "afghani", "afn", "af"]);
 
         // --- Southeast Asia (additional) ---
         self.add("KHR", "\u{17DB} %@", 3992.89703, &["cambodian riel", "riel", "khr", "\u{17DB}"]);

@@ -217,7 +217,6 @@ impl<'a> Lexer<'a> {
             '\u{20A1}' => ("\u{20A1}", "CRC"),   // ₡
             '\u{20B2}' => ("\u{20B2}", "PYG"),   // ₲
             '\u{0192}' => ("\u{0192}", "ANG"),   // ƒ
-            '\u{060B}' => ("\u{060B}", "AFN"),   // ﷼
             _ => return None,
         };
         if let Some(id) = self.currency_table.lookup(currency_code) {
