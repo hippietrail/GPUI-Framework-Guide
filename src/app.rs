@@ -3,7 +3,8 @@ use std::sync::{Arc, Mutex};
 
 use gpui::{
     App, Context, CursorStyle, Entity, Focusable, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Pixels, Render, ScrollHandle, SharedString, Window, div, point, prelude::*, px,
+    MouseUpEvent, Pixels, Render, ScrollDelta, ScrollHandle, ScrollWheelEvent, SharedString,
+    Window, div, point, prelude::*, px,
 };
 
 use gpui::relative;
@@ -139,15 +140,17 @@ impl NumNumApp {
                 format_value_with_precision(&total_val, &eval_ctx.unit_table, &eval_ctx.currency_table, precision)
             };
 
-            // Update editor diagnostics (for inlay rendering)
+            // Update editor diagnostics and variables (for inlay rendering + autocomplete)
             let visual_counts = editor_for_eval.read(cx).line_visual_counts.clone();
             let show_diags = this.show_diagnostics;
+            let var_names: Vec<String> = eval_ctx.variables.keys().cloned().collect();
             editor_for_eval.update(cx, |editor, _cx| {
                 if show_diags {
                     editor.diagnostics = diagnostics.clone();
                 } else {
                     editor.diagnostics = vec![None; diagnostics.len()];
                 }
+                editor.set_known_variables(var_names);
             });
 
             results_for_eval.update(cx, |pane, cx| {
@@ -209,6 +212,7 @@ impl NumNumApp {
             let new_settings = pane.current_settings();
             this.precision = new_settings.editor.precision;
             this.font_size = new_settings.editor.font_size;
+            this.font_family = SharedString::from(new_settings.editor.font_family.clone());
             this.show_diagnostics = new_settings.editor.show_diagnostics;
 
             // Reload theme if appearance mode or theme selection changed
@@ -240,6 +244,15 @@ impl NumNumApp {
                 rp.copy_full_precision = copy_fp;
                 cx.notify();
             });
+
+            // Propagate font changes to editor
+            let new_font_size = new_settings.editor.font_size;
+            let new_font_family = new_settings.editor.font_family.clone();
+            this.editor.update(cx, |editor, _| {
+                editor.font_size = px(new_font_size);
+                editor.font_family = SharedString::from(new_font_family);
+            });
+
             cx.notify();
         }).detach();
 
@@ -274,6 +287,28 @@ impl NumNumApp {
         cx.notify();
     }
 
+    fn on_ctrl_scroll(&mut self, event: &ScrollWheelEvent, _window: &mut Window, cx: &mut Context<Self>) {
+        if !event.modifiers.control { return; }
+        let delta_y = match event.delta {
+            ScrollDelta::Lines(pt) => pt.y,
+            ScrollDelta::Pixels(pt) => {
+                let px_val: f32 = pt.y.into();
+                px_val / 20.0 // normalize pixel delta to line-like units
+            }
+        };
+        if delta_y.abs() < 0.01 { return; }
+        let step = if delta_y > 0.0 { -1.0 } else { 1.0 };
+        self.font_size = (self.font_size + step).clamp(8.0, 72.0);
+        self.editor.update(cx, |editor, _| {
+            editor.font_size = px(self.font_size);
+        });
+        // Save to settings
+        let mut settings = Settings::load();
+        settings.editor.font_size = self.font_size;
+        settings.save();
+        cx.notify();
+    }
+
     fn on_divider_down(&mut self, _: &MouseDownEvent, _window: &mut Window, cx: &mut Context<Self>) {
         self.is_dragging_divider = true;
         cx.notify();
@@ -286,12 +321,10 @@ impl NumNumApp {
 
     fn on_divider_move(&mut self, event: &MouseMoveEvent, window: &mut Window, cx: &mut Context<Self>) {
         if self.is_dragging_divider {
-            let bounds = window.bounds();
-            let window_width: f32 = bounds.size.width.into();
-            if window_width > 0.0 {
+            let viewport_width: f32 = window.viewport_size().width.into();
+            if viewport_width > 0.0 {
                 let mouse_x: f32 = event.position.x.into();
-                let origin_x: f32 = bounds.origin.x.into();
-                let ratio = (mouse_x - origin_x) / window_width;
+                let ratio = mouse_x / viewport_width;
                 self.split_ratio = ratio.clamp(0.3, 0.85);
                 cx.notify();
             }
@@ -343,6 +376,7 @@ impl Render for NumNumApp {
             .text_color(self.theme.text)
             .font_family(self.font_family.clone())
             .text_size(px(self.font_size))
+            .on_scroll_wheel(cx.listener(Self::on_ctrl_scroll))
             // Only attach divider drag handlers when calculator is showing
             .when(!settings_visible, |el| {
                 el.on_mouse_move(cx.listener(Self::on_divider_move))
@@ -394,6 +428,7 @@ impl Render for NumNumApp {
                                                 .flex_shrink()
                                                 .flex_basis(relative(1.0 - split_ratio))
                                                 .min_w_0()
+                                                .overflow_x_hidden()
                                                 .bg(bg)
                                                 .child(results_entity),
                                         ),
