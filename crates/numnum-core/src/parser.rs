@@ -193,14 +193,18 @@ impl Parser {
             return self.parse_percent_form(expr);
         }
 
-        // Check for scale suffix
-        if let TokenKind::Scale(factor) = self.peek() {
+        // Check for scale suffix, then continue to check for unit/currency after
+        let expr = if let TokenKind::Scale(factor) = self.peek() {
             let factor = *factor;
             self.advance();
             if let Expr::Number(n) = &expr {
-                return Ok(Expr::Number(n * factor));
+                Expr::Number(n * factor)
+            } else {
+                expr
             }
-        }
+        } else {
+            expr
+        };
 
         // Check for unit
         if let TokenKind::Unit(id) = self.peek() {

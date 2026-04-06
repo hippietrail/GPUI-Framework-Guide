@@ -494,6 +494,11 @@ impl<'a> Lexer<'a> {
             "thousand" | "thousands" | "th" | "th." => 1e3,
             "million" | "millions" => 1e6,
             "billion" | "billions" | "milliard" | "milliards" => 1e9,
+            "trillion" | "trillions" => 1e12,
+            "quadrillion" | "quadrillions" => 1e15,
+            "quintillion" | "quintillions" => 1e18,
+            "sextillion" | "sextillions" => 1e21,
+            "septillion" | "septillions" => 1e24,
             _ => return None,
         };
         Some(Token { kind: TokenKind::Scale(scale), span: start..self.pos })
