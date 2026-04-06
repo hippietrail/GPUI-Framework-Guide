@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use gpui::{
-    App, Context, CursorStyle, Entity, MouseButton, MouseDownEvent, MouseMoveEvent,
+    App, Context, CursorStyle, Entity, Focusable, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Pixels, Render, ScrollHandle, SharedString, Window, div, point, prelude::*, px,
 };
 
@@ -29,6 +29,7 @@ pub struct NumNumApp {
     split_ratio: f32, // 0.0-1.0, fraction of width for editor
     is_dragging_divider: bool,
     scroll_handle: ScrollHandle,
+    was_settings_visible: bool,
 }
 
 impl NumNumApp {
@@ -215,6 +216,7 @@ impl NumNumApp {
             precision,
             split_ratio: 0.7,
             is_dragging_divider: false,
+            was_settings_visible: false,
             scroll_handle,
         }
     }
@@ -249,6 +251,14 @@ impl NumNumApp {
 impl Render for NumNumApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let settings_visible = self.settings_pane.read(cx).visible;
+
+        // Refocus editor when settings closes
+        if self.was_settings_visible && !settings_visible {
+            let focus = self.editor.focus_handle(cx);
+            window.focus(&focus, cx);
+        }
+        self.was_settings_visible = settings_visible;
+
         let divider_color = self.theme.divider;
         let is_dragging = self.is_dragging_divider;
 
