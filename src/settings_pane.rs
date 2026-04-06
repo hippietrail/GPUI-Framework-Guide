@@ -254,6 +254,7 @@ impl Render for SettingsPane {
             .flex()
             .justify_center()
             .items_center()
+            .text_size(px(14.))
             .bg(theme.background)
             .track_focus(&self.focus_handle(cx))
             .key_context("SettingsPane")

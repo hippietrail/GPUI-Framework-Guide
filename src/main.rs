@@ -118,6 +118,7 @@ fn main() {
                 },
                 move |window, cx| {
                     window.set_rem_size(px(font_size));
+                    window.set_window_title("NumNum");
 
                     // For auto mode, start with dark theme (default).
                     // The async XDG portal detection will fire later via
