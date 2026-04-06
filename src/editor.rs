@@ -3,10 +3,10 @@ use std::time::Instant;
 
 use gpui::{
     App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
-    EntityInputHandler, FocusHandle, Focusable, FontWeight, GlobalElementId, Hsla, LayoutId,
+    EntityInputHandler, FocusHandle, Focusable, FontWeight, GlobalElementId, LayoutId,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point,
     SharedString, Style, TextAlign, TextRun, UTF16Selection, UnderlineStyle, Window,
-    WrappedLine, actions, div, fill, hsla, point, prelude::*, px, relative, size,
+    WrappedLine, actions, div, fill, point, prelude::*, px, relative, size,
 };
 use numnum_core::lexer::{Lexer, TokenKind};
 use numnum_core::types::{CurrencyTable, UnitTable};
@@ -754,8 +754,6 @@ pub struct EditorLinePrepaint {
     cursor: Option<PaintQuad>,
     selection: Option<PaintQuad>,
     cursor_visible: bool,
-    is_cursor_line: bool,
-    active_line_bg: Hsla,
 }
 
 impl IntoElement for EditorLineElement {
@@ -829,11 +827,6 @@ impl Element for EditorLineElement {
         // Cursor blink: visible for 500ms, hidden for 500ms
         let elapsed_ms = cursor_last_moved.elapsed().as_millis();
         let cursor_visible = (elapsed_ms % 1000) < 500;
-
-        // Check if this line is the cursor line (for active line highlight)
-        let line_end_for_cursor = line_start + line_text_owned.len();
-        let is_cursor_line = cursor_off >= line_start && cursor_off <= line_end_for_cursor;
-        let active_line_bg = hsla(0.0, 0.0, 1.0, 0.03);
 
         let ws = window.text_style();
         let is_header = line_text_owned.starts_with('#');
@@ -1031,8 +1024,6 @@ impl Element for EditorLineElement {
             cursor,
             selection,
             cursor_visible,
-            is_cursor_line,
-            active_line_bg,
         }
     }
 
@@ -1067,9 +1058,8 @@ impl Element for EditorLineElement {
         }
 
         // Active line highlight
-        if prepaint.is_cursor_line && is_focused {
-            window.paint_quad(fill(bounds, prepaint.active_line_bg));
-        }
+        // Active line highlight is now drawn at the row level in render()
+        // to include the gutter area
 
         if let Some(selection) = prepaint.selection.take() {
             window.paint_quad(selection);
@@ -1172,22 +1162,35 @@ impl Render for Editor {
                     let visual_lines = visual_counts.get(i).copied().unwrap_or(1);
                     let row_height = lh * visual_lines as f32;
                     // Row: line number gutter + editor line
+                    let is_cursor_line = {
+                        let offset = self.cursor_offset();
+                        let line_start = self.line_start_offset(i);
+                        let lines: Vec<&str> = self.content.split('\n').collect();
+                        let line_end = line_start + lines.get(i).map(|l| l.len()).unwrap_or(0);
+                        offset >= line_start && offset <= line_end
+                    };
+                    let row_bg = if is_cursor_line && self.focus_handle.is_focused(window) {
+                        Some(gpui::hsla(0.0, 0.0, 1.0, 0.03))
+                    } else {
+                        None
+                    };
                     children.push(
                         div()
                             .flex()
                             .flex_row()
                             .w_full()
+                            .when_some(row_bg, |el, bg| el.bg(bg))
                             .child(
-                                // Line number gutter — height matches wrapped line height
+                                // Line number gutter — aligned to bottom for wrapped lines
                                 div()
                                     .w(gutter_w)
                                     .h(row_height)
                                     .flex_shrink_0()
                                     .flex()
-                                    .items_start()
+                                    .items_end()
                                     .justify_end()
                                     .pr(gutter_pad)
-                                    .pt(px(0.))
+                                    .pb(px(4.))
                                     .text_size(px(12.))
                                     .text_color(dimmed)
                                     .child(format!("{}", i + 1)),
