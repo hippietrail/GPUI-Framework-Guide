@@ -364,9 +364,9 @@ impl CurrencyTable {
         self.add("JPY", "\u{00A5} %@", 149.5, &["yen", "japanese yen", "jpy"]);
         self.add("CHF", "%@ SFr.", 0.88, &["swiss franc", "swiss francs", "sfr.", "sfr",
             "chf", "franc", "francs"]);
-        self.add("CAD", "$%@ CAD", 1.36, &["canadian dollar", "canadian dollars", "cad"]);
-        self.add("AUD", "$%@ AUD", 1.53, &["australian dollar", "australian dollars", "aud"]);
-        self.add("CNY", "%@ \u{00A5}", 7.24, &["yuan", "yuans", "chinese yuan",
+        self.add("CAD", "C$ %@", 1.36, &["canadian dollar", "canadian dollars", "cad", "c$", "ca$"]);
+        self.add("AUD", "A$ %@", 1.53, &["australian dollar", "australian dollars", "aud", "a$", "au$"]);
+        self.add("CNY", "CNY %@", 7.24, &["yuan", "yuans", "chinese yuan",
             "rmb", "renminbi", "cny"]);
         self.add("INR", "\u{20B9} %@", 83.5, &["indian rupee", "rupee", "rupees",
             "inr", "rs", "\u{20B9}"]);
@@ -375,7 +375,7 @@ impl CurrencyTable {
             "russian ruble", "russian rubles", "rub"]);
         self.add("BRL", "R$ %@", 5.0, &["brazilian real", "brazilian reals", "r$",
             "brl", "real", "reais"]);
-        self.add("MXN", "$ %@", 17.2, &["mexican peso", "mexican pesos", "mxn"]);
+        self.add("MXN", "MX$ %@", 17.2, &["mexican peso", "mexican pesos", "mxn", "mx$"]);
         self.add("SEK", "%@ kr", 10.5, &["swedish krona", "swedish kronor", "sek"]);
         self.add("NOK", "%@ kr", 10.6, &["norwegian krone", "norwegian kroner", "nok"]);
         self.add("DKK", "%@ kr.", 6.9, &["danish krone", "danish kroner", "dkk"]);
@@ -391,7 +391,7 @@ impl CurrencyTable {
         self.add("SAR", "%@ SR", 3.75, &["saudi riyal", "saudi riyals", "sr", "sar"]);
         self.add("ILS", "%@ NIS", 3.7, &["shekel", "new shekel", "israeli new shekel", "nis", "ils"]);
         self.add("UAH", "%@ UAH", 37.5, &["hryvnia", "ukrainian hryvnia", "uah"]);
-        self.add("NZD", "$%@ NZD", 1.63, &["new zealand dollar", "new zealand dollars", "nzd"]);
+        self.add("NZD", "NZ$ %@", 1.63, &["new zealand dollar", "new zealand dollars", "nzd", "nz$"]);
 
         // --- South Asia ---
         self.add("PKR", "\u{20A8} %@", 278.0, &["pakistani rupee", "pakistani rupees", "pkr", "\u{20A8}"]);
@@ -430,11 +430,11 @@ impl CurrencyTable {
         self.add("ISK", "%@ kr", 138.0, &["icelandic krona", "icelandic kronas", "isk"]);
 
         // --- South America ---
-        self.add("COP", "$%@ COP", 4100.0, &["colombian peso", "colombian pesos", "cop"]);
-        self.add("ARS", "%@ ARS", 870.0, &["argentine peso", "argentine pesos", "ars"]);
-        self.add("CLP", "%@ CLP", 950.0, &["chilean peso", "chilean pesos", "clp"]);
+        self.add("COP", "CO$ %@", 4100.0, &["colombian peso", "colombian pesos", "cop", "co$"]);
+        self.add("ARS", "AR$ %@", 870.0, &["argentine peso", "argentine pesos", "ars", "ar$"]);
+        self.add("CLP", "CL$ %@", 950.0, &["chilean peso", "chilean pesos", "clp", "cl$"]);
         self.add("PEN", "%@ S/.", 3.75, &["peruvian sol", "peruvian soles", "pen", "s/."]);
-        self.add("UYU", "$U %@", 40.0, &["uruguayan peso", "uruguayan pesos", "uyu", "$u"]);
+        self.add("UYU", "UY$ %@", 40.0, &["uruguayan peso", "uruguayan pesos", "uyu", "uy$"]);
 
         // --- Central Asia ---
         self.add("KGS", "%@ KGS", 87.447949, &["kyrgyz som", "kyrgyzstani som", "kgs"]);
@@ -489,18 +489,18 @@ impl CurrencyTable {
         self.add("MGA", "%@ MGA", 4171.56798, &["malagasy ariary", "ariary", "mga"]);
         self.add("MKD", "%@ MKD", 53.454119, &["macedonian denar", "denar", "denari", "mkd"]);
         self.add("MRU", "%@ MRU", 40.08329, &["mauritanian ouguiya", "ouguiya", "mru"]);
-        self.add("MUR", "\u{20A8} %@ MUR", 46.846577, &["mauritian rupee", "mauritian rupees", "mur"]);
+        self.add("MUR", "MUR %@", 46.846577, &["mauritian rupee", "mauritian rupees", "mur"]);
         self.add("MWK", "MK %@", 1744.20424, &["malawian kwacha", "malawi kwacha", "mwk"]);
         self.add("MZN", "%@ MZN", 63.706996, &["mozambican metical", "metical", "meticais", "mzn"]);
         self.add("NAD", "N$ %@", 16.986342, &["namibian dollar", "namibian dollars", "nad"]);
         self.add("RWF", "%@ RWF", 1457.974283, &["rwandan franc", "rwanda franc", "rwf"]);
-        self.add("SCR", "\u{20A8} %@ SCR", 14.385468, &["seychellois rupee", "seychelles rupee", "scr"]);
+        self.add("SCR", "SCR %@", 14.385468, &["seychellois rupee", "seychelles rupee", "scr"]);
         self.add("SDG", "%@ SDG", 508.997922, &["sudanese pound", "sudanese pounds", "sdg"]);
-        self.add("SHP", "\u{00A3} %@ SHP", 0.75732, &["saint helena pound", "st helena pound", "shp"]);
+        self.add("SHP", "SHP %@", 0.75732, &["saint helena pound", "st helena pound", "shp"]);
         self.add("SLE", "Le %@", 24.661731, &["sierra leonean leone", "leone", "sle"]);
         self.add("SLL", "Le %@ SLL", 24661.730761, &["sierra leonean leone old", "old leone", "sll"]);
         self.add("SOS", "Sh %@", 571.610021, &["somali shilling", "somali shillings", "sos"]);
-        self.add("SSP", "\u{00A3} %@ SSP", 4588.612193, &["south sudanese pound", "south sudan pound", "ssp"]);
+        self.add("SSP", "SSP %@", 4588.612193, &["south sudanese pound", "south sudan pound", "ssp"]);
         self.add("STN", "%@ STN", 21.253654, &["sao tome dobra", "dobra", "stn"]);
         self.add("SZL", "E %@", 16.986342, &["swazi lilangeni", "lilangeni", "emalangeni", "szl"]);
         self.add("UGX", "USh %@", 3754.257525, &["ugandan shilling", "ugandan shillings", "ugx"]);
@@ -514,10 +514,10 @@ impl CurrencyTable {
         self.add("ALL", "%@ ALL", 83.059825, &["albanian lek", "lek", "leke", "all"]);
         self.add("BAM", "KM %@", 1.696675, &["bosnia mark", "convertible mark", "bosnian mark", "bam"]);
         self.add("BYN", "Br %@", 2.964765, &["belarusian ruble", "belarusian rubles", "byn"]);
-        self.add("GGP", "\u{00A3} %@ GGP", 0.75732, &["guernsey pound", "ggp"]);
-        self.add("GIP", "\u{00A3} %@ GIP", 0.75732, &["gibraltar pound", "gibraltar pounds", "gip"]);
-        self.add("IMP", "\u{00A3} %@ IMP", 0.75732, &["manx pound", "isle of man pound", "imp"]);
-        self.add("JEP", "\u{00A3} %@ JEP", 0.75732, &["jersey pound", "jep"]);
+        self.add("GGP", "GGP %@", 0.75732, &["guernsey pound", "ggp"]);
+        self.add("GIP", "GIP %@", 0.75732, &["gibraltar pound", "gibraltar pounds", "gip"]);
+        self.add("IMP", "IMP %@", 0.75732, &["manx pound", "isle of man pound", "imp"]);
+        self.add("JEP", "JEP %@", 0.75732, &["jersey pound", "jep"]);
         self.add("MDL", "%@ MDL", 17.589358, &["moldovan leu", "moldovan lei", "mdl"]);
         self.add("RSD", "%@ RSD", 101.744411, &["serbian dinar", "serbian dinars", "rsd"]);
         self.add("FOK", "%@ FOK", 6.471317, &["faroese krona", "faroe krona", "fok"]);
@@ -844,7 +844,7 @@ mod tests {
         assert!(ct.lookup("hk$").is_some(), "HK$ should resolve to HKD");
         assert!(ct.lookup("s$").is_some(), "S$ should resolve to SGD");
         assert!(ct.lookup("nt$").is_some(), "NT$ should resolve to TWD");
-        assert!(ct.lookup("$u").is_some(), "$U should resolve to UYU");
+        assert!(ct.lookup("uy$").is_some(), "UY$ should resolve to UYU");
     }
 
     #[test]

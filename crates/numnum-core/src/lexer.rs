@@ -377,12 +377,8 @@ impl<'a> Lexer<'a> {
             return Token { kind: TokenKind::Assign, span: start..self.pos };
         }
 
-        // Unit lookup
-        if let Some(id) = self.unit_table.lookup(&lower) {
-            return Token { kind: TokenKind::Unit(id), span: start..self.pos };
-        }
-
-        // Currency lookup (try compound symbol with trailing '$' first: R$, HK$, S$)
+        // Currency lookup (try compound symbol with trailing '$' first: C$, A$, HK$, etc.)
+        // Must come BEFORE unit lookup since C=celsius, but C$=CAD
         if self.pos < self.input().len() && self.peek_char() == Some('$') {
             let compound = format!("{}$", lower);
             if let Some(id) = self.currency_table.lookup(&compound) {
@@ -390,6 +386,13 @@ impl<'a> Lexer<'a> {
                 return Token { kind: TokenKind::CurrencySymbol(id), span: start..self.pos };
             }
         }
+
+        // Unit lookup
+        if let Some(id) = self.unit_table.lookup(&lower) {
+            return Token { kind: TokenKind::Unit(id), span: start..self.pos };
+        }
+
+        // Currency lookup (word: USD, INR, euro, etc.)
         if let Some(id) = self.currency_table.lookup(&lower) {
             return Token { kind: TokenKind::Currency(id), span: start..self.pos };
         }
