@@ -43,7 +43,7 @@ impl Render for StatusBar {
         let icon_path = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icons/settings.svg");
 
         let on_settings = self.on_settings_click.clone();
-        let icon_color = self.theme.text_muted;
+        let icon_color = self.theme.text_dimmed;
 
         div()
             .flex()
