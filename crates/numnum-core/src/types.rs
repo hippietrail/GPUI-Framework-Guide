@@ -436,6 +436,141 @@ impl CurrencyTable {
         self.add("PEN", "%@ S/.", 3.75, &["peruvian sol", "peruvian soles", "pen", "s/."]);
         self.add("UYU", "$U %@", 40.0, &["uruguayan peso", "uruguayan pesos", "uyu", "$u"]);
 
+        // --- Central Asia ---
+        self.add("KGS", "%@ KGS", 87.447949, &["kyrgyz som", "kyrgyzstani som", "kgs"]);
+        self.add("KZT", "\u{20B8} %@", 472.588461, &["kazakhstani tenge", "tenge", "kzt", "\u{20B8}"]);
+        self.add("TJS", "%@ TJS", 9.557188, &["tajikistani somoni", "somoni", "tjs"]);
+        self.add("TMT", "%@ TMT", 3.500314, &["turkmenistani manat", "turkmen manat", "tmt"]);
+        self.add("UZS", "%@ UZS", 12194.618803, &["uzbekistani som", "uzbek som", "uzs"]);
+        self.add("AZN", "\u{20BC} %@", 1.700131, &["azerbaijani manat", "manat", "azn", "\u{20BC}"]);
+        self.add("GEL", "\u{20BE} %@", 2.695614, &["georgian lari", "lari", "gel", "\u{20BE}"]);
+        self.add("AMD", "\u{058F} %@", 377.151954, &["armenian dram", "dram", "amd", "\u{058F}"]);
+
+        // --- South Asia (additional) ---
+        self.add("BTN", "Nu. %@", 93.181617, &["bhutanese ngultrum", "ngultrum", "btn"]);
+        self.add("MVR", "Rf %@", 15.449077, &["maldivian rufiyaa", "rufiyaa", "mvr"]);
+        self.add("AFN", "\u{060B} %@", 64.60017, &["afghan afghani", "afghani", "afn", "\u{060B}"]);
+
+        // --- Southeast Asia (additional) ---
+        self.add("KHR", "\u{17DB} %@", 3992.89703, &["cambodian riel", "riel", "khr", "\u{17DB}"]);
+        self.add("LAK", "\u{20AD} %@", 21969.844376, &["lao kip", "laotian kip", "kip", "lak", "\u{20AD}"]);
+        self.add("MMK", "K %@", 2101.122717, &["myanmar kyat", "burmese kyat", "kyat", "mmk"]);
+        self.add("BND", "B$ %@", 1.286393, &["brunei dollar", "brunei dollars", "bnd"]);
+
+        // --- East Asia (additional) ---
+        self.add("MOP", "MOP$ %@", 8.07286, &["macanese pataca", "pataca", "mop"]);
+        self.add("MNT", "\u{20AE} %@", 3589.942392, &["mongolian tugrik", "tugrik", "togrog", "mnt", "\u{20AE}"]);
+        self.add("CNH", "%@ CNH", 6.885876, &["offshore yuan", "offshore renminbi", "cnh"]);
+
+        // --- Middle East (additional) ---
+        self.add("IQD", "%@ IQD", 1311.095307, &["iraqi dinar", "iraqi dinars", "iqd"]);
+        self.add("IRR", "%@ IRR", 1131435.415551, &["iranian rial", "iranian rials", "irr"]);
+        self.add("LBP", "L\u{00A3} %@", 89500.0, &["lebanese pound", "lebanese pounds", "lbp"]);
+        self.add("SYP", "\u{00A3}S %@", 113.971124, &["syrian pound", "syrian pounds", "syp"]);
+        self.add("YER", "%@ YER", 238.584256, &["yemeni rial", "yemeni rials", "yer"]);
+
+        // --- Africa (additional) ---
+        self.add("DZD", "%@ DZD", 133.090473, &["algerian dinar", "algerian dinars", "dzd"]);
+        self.add("AOA", "%@ AOA", 920.402247, &["angolan kwanza", "kwanza", "aoa"]);
+        self.add("BWP", "P %@", 14.063811, &["botswana pula", "pula", "bwp"]);
+        self.add("BIF", "%@ BIF", 2980.867789, &["burundian franc", "burundi franc", "bif"]);
+        self.add("CVE", "%@ CVE", 95.654455, &["cape verdean escudo", "cape verde escudo", "cve"]);
+        self.add("CDF", "%@ CDF", 2293.584609, &["congolese franc", "congo franc", "cdf"]);
+        self.add("DJF", "%@ DJF", 177.721, &["djiboutian franc", "djibouti franc", "djf"]);
+        self.add("ERN", "%@ ERN", 15.0, &["eritrean nakfa", "nakfa", "ern"]);
+        self.add("ETB", "%@ ETB", 155.519206, &["ethiopian birr", "birr", "etb"]);
+        self.add("GMD", "%@ GMD", 74.214935, &["gambian dalasi", "dalasi", "gmd"]);
+        self.add("GNF", "%@ GNF", 8772.851031, &["guinean franc", "guinea franc", "gnf"]);
+        self.add("KMF", "%@ KMF", 426.780096, &["comorian franc", "comoros franc", "kmf"]);
+        self.add("LRD", "L$ %@", 183.491951, &["liberian dollar", "liberian dollars", "lrd"]);
+        self.add("LSL", "%@ LSL", 16.986342, &["lesotho loti", "loti", "maloti", "lsl"]);
+        self.add("LYD", "%@ LYD", 6.389797, &["libyan dinar", "libyan dinars", "lyd"]);
+        self.add("MAD", "%@ MAD", 9.366464, &["moroccan dirham", "moroccan dirhams", "mad"]);
+        self.add("MGA", "%@ MGA", 4171.56798, &["malagasy ariary", "ariary", "mga"]);
+        self.add("MKD", "%@ MKD", 53.454119, &["macedonian denar", "denar", "denari", "mkd"]);
+        self.add("MRU", "%@ MRU", 40.08329, &["mauritanian ouguiya", "ouguiya", "mru"]);
+        self.add("MUR", "\u{20A8} %@ MUR", 46.846577, &["mauritian rupee", "mauritian rupees", "mur"]);
+        self.add("MWK", "MK %@", 1744.20424, &["malawian kwacha", "malawi kwacha", "mwk"]);
+        self.add("MZN", "%@ MZN", 63.706996, &["mozambican metical", "metical", "meticais", "mzn"]);
+        self.add("NAD", "N$ %@", 16.986342, &["namibian dollar", "namibian dollars", "nad"]);
+        self.add("RWF", "%@ RWF", 1457.974283, &["rwandan franc", "rwanda franc", "rwf"]);
+        self.add("SCR", "\u{20A8} %@ SCR", 14.385468, &["seychellois rupee", "seychelles rupee", "scr"]);
+        self.add("SDG", "%@ SDG", 508.997922, &["sudanese pound", "sudanese pounds", "sdg"]);
+        self.add("SHP", "\u{00A3} %@ SHP", 0.75732, &["saint helena pound", "st helena pound", "shp"]);
+        self.add("SLE", "Le %@", 24.661731, &["sierra leonean leone", "leone", "sle"]);
+        self.add("SLL", "Le %@ SLL", 24661.730761, &["sierra leonean leone old", "old leone", "sll"]);
+        self.add("SOS", "Sh %@", 571.610021, &["somali shilling", "somali shillings", "sos"]);
+        self.add("SSP", "\u{00A3} %@ SSP", 4588.612193, &["south sudanese pound", "south sudan pound", "ssp"]);
+        self.add("STN", "%@ STN", 21.253654, &["sao tome dobra", "dobra", "stn"]);
+        self.add("SZL", "E %@", 16.986342, &["swazi lilangeni", "lilangeni", "emalangeni", "szl"]);
+        self.add("UGX", "USh %@", 3754.257525, &["ugandan shilling", "ugandan shillings", "ugx"]);
+        self.add("XAF", "%@ FCFA", 569.040128, &["central african cfa franc", "cfa franc beac", "xaf"]);
+        self.add("XOF", "%@ CFA", 569.040128, &["west african cfa franc", "cfa franc bceao", "xof"]);
+        self.add("ZMW", "ZK %@", 19.320298, &["zambian kwacha", "zambia kwacha", "zmw"]);
+        self.add("ZWG", "%@ ZWG", 25.3745, &["zimbabwe gold", "zig", "zwg"]);
+        self.add("ZWL", "Z$ %@", 25.3745, &["zimbabwean dollar", "zimbabwean dollars", "zwl"]);
+
+        // --- Europe (additional) ---
+        self.add("ALL", "%@ ALL", 83.059825, &["albanian lek", "lek", "leke", "all"]);
+        self.add("BAM", "KM %@", 1.696675, &["bosnia mark", "convertible mark", "bosnian mark", "bam"]);
+        self.add("BYN", "Br %@", 2.964765, &["belarusian ruble", "belarusian rubles", "byn"]);
+        self.add("GGP", "\u{00A3} %@ GGP", 0.75732, &["guernsey pound", "ggp"]);
+        self.add("GIP", "\u{00A3} %@ GIP", 0.75732, &["gibraltar pound", "gibraltar pounds", "gip"]);
+        self.add("IMP", "\u{00A3} %@ IMP", 0.75732, &["manx pound", "isle of man pound", "imp"]);
+        self.add("JEP", "\u{00A3} %@ JEP", 0.75732, &["jersey pound", "jep"]);
+        self.add("MDL", "%@ MDL", 17.589358, &["moldovan leu", "moldovan lei", "mdl"]);
+        self.add("RSD", "%@ RSD", 101.744411, &["serbian dinar", "serbian dinars", "rsd"]);
+        self.add("FOK", "%@ FOK", 6.471317, &["faroese krona", "faroe krona", "fok"]);
+
+        // --- North Africa / Mediterranean ---
+        self.add("TND", "%@ TND", 2.931721, &["tunisian dinar", "tunisian dinars", "tnd"]);
+
+        // --- South America (additional) ---
+        self.add("BOB", "Bs %@", 6.926047, &["boliviano", "bolivianos", "bob"]);
+        self.add("GYD", "G$ %@", 209.358988, &["guyanese dollar", "guyanese dollars", "gyd"]);
+        self.add("PYG", "\u{20B2} %@", 6510.656336, &["paraguayan guarani", "guarani", "pyg", "\u{20B2}"]);
+        self.add("SRD", "Sr$ %@", 37.458656, &["surinamese dollar", "suriname dollar", "srd"]);
+        self.add("VES", "Bs.S %@", 474.0598, &["venezuelan bolivar", "bolivar soberano", "ves"]);
+        self.add("CLF", "%@ CLF", 0.023227, &["chilean unit of account", "unidad de fomento", "clf"]);
+
+        // --- Central America & Caribbean ---
+        self.add("BBD", "Bds$ %@", 2.0, &["barbadian dollar", "barbados dollar", "bbd"]);
+        self.add("BMD", "BD$ %@", 1.0, &["bermudian dollar", "bermuda dollar", "bmd"]);
+        self.add("BSD", "B$ %@ BSD", 1.0, &["bahamian dollar", "bahamas dollar", "bsd"]);
+        self.add("BZD", "BZ$ %@", 2.0, &["belize dollar", "belize dollars", "bzd"]);
+        self.add("CRC", "\u{20A1} %@", 465.35897, &["costa rican colon", "colon", "colones", "crc", "\u{20A1}"]);
+        self.add("CUP", "$MN %@", 24.0, &["cuban peso", "cuban pesos", "cup"]);
+        self.add("DOP", "RD$ %@", 60.358559, &["dominican peso", "dominican pesos", "dop"]);
+        self.add("GTQ", "Q %@", 7.651701, &["guatemalan quetzal", "quetzal", "quetzales", "gtq"]);
+        self.add("HNL", "L %@", 26.581894, &["honduran lempira", "lempira", "lempiras", "hnl"]);
+        self.add("HTG", "G %@", 130.940308, &["haitian gourde", "gourde", "htg"]);
+        self.add("JMD", "J$ %@", 157.869373, &["jamaican dollar", "jamaican dollars", "jmd"]);
+        self.add("KYD", "CI$ %@", 0.833333, &["cayman islands dollar", "cayman dollar", "kyd"]);
+        self.add("NIO", "C$ %@", 36.808026, &["nicaraguan cordoba", "cordoba", "cordobas", "nio"]);
+        self.add("PAB", "B/. %@", 1.0, &["panamanian balboa", "balboa", "balboas", "pab"]);
+        self.add("TTD", "TT$ %@", 6.766397, &["trinidad dollar", "trinidad and tobago dollar", "ttd"]);
+        self.add("XCD", "EC$ %@", 2.7, &["east caribbean dollar", "ec dollar", "xcd"]);
+        self.add("ANG", "\u{0192} %@", 1.79, &["netherlands antillean guilder", "antillean guilder", "ang", "\u{0192}"]);
+        self.add("AWG", "\u{0192} %@ AWG", 1.79, &["aruban florin", "aruba florin", "awg"]);
+        self.add("XCG", "%@ XCG", 1.79, &["caribbean guilder", "xcg"]);
+
+        // --- Pacific ---
+        self.add("FJD", "FJ$ %@", 2.255663, &["fijian dollar", "fiji dollar", "fjd"]);
+        self.add("PGK", "K %@ PGK", 4.323403, &["papua new guinean kina", "kina", "pgk"]);
+        self.add("SBD", "SI$ %@", 7.950994, &["solomon islands dollar", "solomon dollar", "sbd"]);
+        self.add("TOP", "T$ %@", 2.384648, &["tongan paanga", "paanga", "top"]);
+        self.add("TVD", "TV$ %@", 1.44996, &["tuvaluan dollar", "tuvalu dollar", "tvd"]);
+        self.add("VUV", "VT %@", 119.19378, &["vanuatu vatu", "vatu", "vuv"]);
+        self.add("WST", "WS$ %@", 2.7315, &["samoan tala", "tala", "wst"]);
+        self.add("KID", "A$ %@ KID", 1.44996, &["kiribati dollar", "kid"]);
+        self.add("XPF", "%@ XPF", 103.520042, &["cfp franc", "pacific franc", "xpf"]);
+
+        // --- Falkland Islands ---
+        self.add("FKP", "FK\u{00A3} %@", 0.75732, &["falkland islands pound", "falkland pound", "fkp"]);
+
+        // --- Special Drawing Rights ---
+        self.add("XDR", "%@ XDR", 0.735298, &["special drawing rights", "sdr", "xdr"]);
+
         // --- Crypto ---
         self.add("BTC", "%@ BTC", 0.000015, &["bitcoin", "bitcoins", "btc"]);
         self.add("ETH", "%@ ETH", 0.00049, &["ethereum", "ether", "eth"]);
