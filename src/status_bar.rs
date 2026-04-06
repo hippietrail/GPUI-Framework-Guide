@@ -68,7 +68,7 @@ impl Render for StatusBar {
                             .cursor_pointer()
                             .child(
                                 svg()
-                                    .path(icon_path)
+                                    .external_path(icon_path)
                                     .size(px(16.))
                                     .text_color(icon_color)
                             )

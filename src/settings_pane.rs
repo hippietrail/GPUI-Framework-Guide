@@ -7,7 +7,12 @@ pub struct SettingsPane {
     pub visible: bool,
     settings: Settings,
     theme: Theme,
+    font_list: Vec<String>,
+    font_list_open: bool,
+    font_scroll_offset: usize,
 }
+
+const FONT_LIST_PAGE_SIZE: usize = 12;
 
 impl SettingsPane {
     pub fn new(settings: Settings, theme: Theme) -> Self {
@@ -15,6 +20,9 @@ impl SettingsPane {
             visible: false,
             settings,
             theme,
+            font_list: Vec::new(),
+            font_list_open: false,
+            font_scroll_offset: 0,
         }
     }
 
@@ -29,6 +37,8 @@ impl SettingsPane {
 
     fn close(&mut self, cx: &mut Context<Self>) {
         self.visible = false;
+        self.font_list_open = false;
+        self.font_scroll_offset = 0;
         self.settings.save();
         cx.notify();
     }
@@ -74,12 +84,44 @@ impl SettingsPane {
         self.settings.save();
         cx.notify();
     }
+
+    fn toggle_font_list(&mut self, cx: &mut Context<Self>) {
+        self.font_list_open = !self.font_list_open;
+        cx.notify();
+    }
+
+    fn select_font(&mut self, name: String, cx: &mut Context<Self>) {
+        self.settings.editor.font_family = name;
+        self.font_list_open = false;
+        self.settings.save();
+        cx.notify();
+    }
+
+    fn font_list_scroll_up(&mut self, cx: &mut Context<Self>) {
+        if self.font_scroll_offset >= FONT_LIST_PAGE_SIZE {
+            self.font_scroll_offset -= FONT_LIST_PAGE_SIZE;
+        } else {
+            self.font_scroll_offset = 0;
+        }
+        cx.notify();
+    }
+
+    fn font_list_scroll_down(&mut self, cx: &mut Context<Self>) {
+        let max = self.font_list.len().saturating_sub(FONT_LIST_PAGE_SIZE);
+        self.font_scroll_offset = (self.font_scroll_offset + FONT_LIST_PAGE_SIZE).min(max);
+        cx.notify();
+    }
 }
 
 impl Render for SettingsPane {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         if !self.visible {
             return div().into_any_element();
+        }
+
+        // Load font list from system if not yet populated
+        if self.font_list.is_empty() {
+            self.font_list = window.text_system().all_font_names();
         }
 
         let theme = self.theme.clone();
@@ -93,16 +135,24 @@ impl Render for SettingsPane {
         let tab_size_val = format!("{}", settings.editor.tab_size);
         let copy_fp_val = if settings.editor.copy_full_precision { "Yes" } else { "No" };
 
+        // Build font list dropdown if open
+        let font_list_open = self.font_list_open;
+        let font_scroll_offset = self.font_scroll_offset;
+        let visible_fonts: Vec<String> = self.font_list.iter()
+            .skip(font_scroll_offset)
+            .take(FONT_LIST_PAGE_SIZE)
+            .cloned()
+            .collect();
+        let can_scroll_up = font_scroll_offset > 0;
+        let can_scroll_down = font_scroll_offset + FONT_LIST_PAGE_SIZE < self.font_list.len();
+
         div()
-            .absolute()
-            .top_0()
-            .left_0()
+            .flex_1()
             .w_full()
-            .h_full()
             .flex()
             .justify_center()
             .items_center()
-            .bg(gpui::hsla(0.0, 0.0, 0.0, 0.5))
+            .bg(theme.background)
             .child(
                 div()
                     .w(px(400.))
@@ -149,14 +199,111 @@ impl Render for SettingsPane {
                     .child(
                         div().w_full().h(px(1.)).bg(theme.divider).mb(px(8.)),
                     )
-                    // Font Family (display only)
+                    // Font Family (clickable to open font list)
                     .child(
                         setting_row(
                             &theme,
                             "Font Family",
-                            div().text_color(theme.text).child(font_family_val),
+                            div()
+                                .id("font-family-btn")
+                                .cursor_pointer()
+                                .text_color(theme.text)
+                                .hover(|s| s.text_color(theme.text_muted))
+                                .child(format!("{} \u{25BE}", font_family_val))
+                                .on_mouse_up(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                        this.toggle_font_list(cx);
+                                    }),
+                                ),
                         ),
                     )
+                    // Font list dropdown (shown when open)
+                    .when(font_list_open, |el| {
+                        let theme2 = theme.clone();
+                        let mut list_col = div()
+                            .w_full()
+                            .bg(theme2.editor_background)
+                            .border_1()
+                            .border_color(theme2.divider)
+                            .rounded(px(6.))
+                            .p(px(4.))
+                            .flex()
+                            .flex_col()
+                            .mb(px(4.));
+
+                        // Scroll up button
+                        if can_scroll_up {
+                            list_col = list_col.child(
+                                div()
+                                    .id("font-scroll-up")
+                                    .cursor_pointer()
+                                    .text_color(theme2.text_muted)
+                                    .text_size(px(11.))
+                                    .py(px(2.))
+                                    .flex()
+                                    .justify_center()
+                                    .hover(|s| s.text_color(theme2.text))
+                                    .child("\u{25B2} more")
+                                    .on_mouse_up(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                            this.font_list_scroll_up(cx);
+                                        }),
+                                    ),
+                            );
+                        }
+
+                        for (i, font_name) in visible_fonts.iter().enumerate() {
+                            let name = font_name.clone();
+                            let is_selected = *font_name == font_family_val;
+                            list_col = list_col.child(
+                                div()
+                                    .id(gpui::ElementId::Name(
+                                        format!("font-item-{}", font_scroll_offset + i).into(),
+                                    ))
+                                    .cursor_pointer()
+                                    .text_size(px(12.))
+                                    .py(px(3.))
+                                    .px(px(6.))
+                                    .rounded(px(4.))
+                                    .when(is_selected, |s| s.bg(theme2.divider))
+                                    .text_color(if is_selected { theme2.text } else { theme2.text_muted })
+                                    .hover(|s| s.bg(theme2.divider))
+                                    .child(font_name.clone())
+                                    .on_mouse_up(
+                                        MouseButton::Left,
+                                        cx.listener(move |this, _: &MouseUpEvent, _window, cx| {
+                                            this.select_font(name.clone(), cx);
+                                        }),
+                                    ),
+                            );
+                        }
+
+                        // Scroll down button
+                        if can_scroll_down {
+                            list_col = list_col.child(
+                                div()
+                                    .id("font-scroll-down")
+                                    .cursor_pointer()
+                                    .text_color(theme2.text_muted)
+                                    .text_size(px(11.))
+                                    .py(px(2.))
+                                    .flex()
+                                    .justify_center()
+                                    .hover(|s| s.text_color(theme2.text))
+                                    .child("\u{25BC} more")
+                                    .on_mouse_up(
+                                        MouseButton::Left,
+                                        cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                            this.font_list_scroll_down(cx);
+                                        }),
+                                    ),
+                            );
+                        }
+
+                        el.child(list_col)
+                    })
                     // Font Size (+/-)
                     .child(
                         setting_row(

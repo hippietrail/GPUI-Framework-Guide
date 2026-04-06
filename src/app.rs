@@ -236,6 +236,7 @@ impl NumNumApp {
 
 impl Render for NumNumApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let settings_visible = self.settings_pane.read(cx).visible;
         let divider_color = self.theme.divider;
         let is_dragging = self.is_dragging_divider;
 
@@ -247,6 +248,12 @@ impl Render for NumNumApp {
         let diag_line_height = px(20.0);
         let content_height = line_height * (line_count as f32) + diag_line_height * (diag_count as f32) + px(100.0); // extra padding at bottom
 
+        let split_ratio = self.split_ratio;
+        let scroll_handle = self.scroll_handle.clone();
+        let editor_entity = self.editor.clone();
+        let results_entity = self.results_pane.clone();
+        let bg = self.theme.background;
+
         div()
             .flex()
             .flex_col()
@@ -255,82 +262,91 @@ impl Render for NumNumApp {
             .text_color(self.theme.text)
             .font_family(self.font_family.clone())
             .text_size(px(self.font_size))
-            .on_mouse_move(cx.listener(Self::on_divider_move))
-            .on_mouse_up(MouseButton::Left, cx.listener(Self::on_divider_up))
-            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_divider_up))
-            .child(
-                // Main area: flex_row with scroll viewport + fixed divider
-                div()
-                    .flex()
-                    .flex_row()
-                    .flex_1()
-                    .min_h_0()
-                    .child(
-                        // Scroll viewport (editor + results scroll together)
-                        div()
-                            .id("scroll-viewport")
-                            .flex_1()
-                            .min_w_0()
-                            .min_h_0()
-                            .overflow_y_scroll()
-                            .track_scroll(&self.scroll_handle)
-                            .child(
-                                // Fixed-height content
-                                div()
-                                    .w_full()
-                                    .h(content_height)
-                                    .flex()
-                                    .flex_row()
-                                    .child(
-                                        // Editor pane — proportional width
-                                        div()
-                                            .flex_grow()
-                                            .flex_shrink()
-                                            .flex_basis(relative(self.split_ratio))
-                                            .min_w_0()
-                                            .child(self.editor.clone()),
-                                    )
-                                    .child(
-                                        // Spacer for divider width
-                                        div().w(px(14.)).flex_shrink_0(),
-                                    )
-                                    .child(
-                                        // Results pane — proportional width
-                                        div()
-                                            .flex_grow()
-                                            .flex_shrink()
-                                            .flex_basis(relative(1.0 - self.split_ratio))
-                                            .min_w_0()
-                                            .bg(self.theme.background)
-                                            .child(self.results_pane.clone()),
-                                    ),
-                            ),
-                    )
-                    .child(
-                        // Divider — OUTSIDE scroll, full viewport height, positioned over the spacer
-                        div()
-                            .id("split-divider")
-                            .group("divider")
-                            .absolute()
-                            .left(relative(self.split_ratio))
-                            .top_0()
-                            .bottom_0()
-                            .w(px(14.))
-                            .flex()
-                            .justify_center()
-                            .cursor(CursorStyle::ResizeLeftRight)
-                            .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
-                            .child(
-                                div()
-                                    .w(px(5.))
-                                    .h_full()
-                                    .rounded_sm()
-                                    .when(is_dragging, |el| el.bg(divider_color))
-                                    .group_hover("divider", |style| style.bg(divider_color)),
-                            ),
-                    ),
-            )
+            // Only attach divider drag handlers when calculator is showing
+            .when(!settings_visible, |el| {
+                el.on_mouse_move(cx.listener(Self::on_divider_move))
+                    .on_mouse_up(MouseButton::Left, cx.listener(Self::on_divider_up))
+                    .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_divider_up))
+            })
+            // Main area: either calculator or settings
+            .when(!settings_visible, |el| {
+                el.child(
+                    // Main area: flex_row with scroll viewport + fixed divider
+                    div()
+                        .flex()
+                        .flex_row()
+                        .flex_1()
+                        .min_h_0()
+                        .child(
+                            // Scroll viewport (editor + results scroll together)
+                            div()
+                                .id("scroll-viewport")
+                                .flex_1()
+                                .min_w_0()
+                                .min_h_0()
+                                .overflow_y_scroll()
+                                .track_scroll(&scroll_handle)
+                                .child(
+                                    // Fixed-height content
+                                    div()
+                                        .w_full()
+                                        .h(content_height)
+                                        .flex()
+                                        .flex_row()
+                                        .child(
+                                            // Editor pane — proportional width
+                                            div()
+                                                .flex_grow()
+                                                .flex_shrink()
+                                                .flex_basis(relative(split_ratio))
+                                                .min_w_0()
+                                                .child(editor_entity),
+                                        )
+                                        .child(
+                                            // Spacer for divider width
+                                            div().w(px(14.)).flex_shrink_0(),
+                                        )
+                                        .child(
+                                            // Results pane — proportional width
+                                            div()
+                                                .flex_grow()
+                                                .flex_shrink()
+                                                .flex_basis(relative(1.0 - split_ratio))
+                                                .min_w_0()
+                                                .bg(bg)
+                                                .child(results_entity),
+                                        ),
+                                ),
+                        )
+                        .child(
+                            // Divider — OUTSIDE scroll, full viewport height, positioned over the spacer
+                            div()
+                                .id("split-divider")
+                                .group("divider")
+                                .absolute()
+                                .left(relative(split_ratio))
+                                .top_0()
+                                .bottom_0()
+                                .w(px(14.))
+                                .flex()
+                                .justify_center()
+                                .cursor(CursorStyle::ResizeLeftRight)
+                                .on_mouse_down(MouseButton::Left, cx.listener(Self::on_divider_down))
+                                .child(
+                                    div()
+                                        .w(px(5.))
+                                        .h_full()
+                                        .rounded_sm()
+                                        .when(is_dragging, |el| el.bg(divider_color))
+                                        .group_hover("divider", |style| style.bg(divider_color)),
+                                ),
+                        ),
+                )
+            })
+            .when(settings_visible, |el| {
+                el.child(self.settings_pane.clone())
+            })
+            // Status bar always visible
             .child(self.status_bar.clone())
-            .child(self.settings_pane.clone())
     }
 }
