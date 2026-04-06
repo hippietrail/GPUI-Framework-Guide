@@ -58,30 +58,28 @@ impl Render for StatusBar {
             // Left: Settings gear icon
             .child(
                 div()
+                    .id("settings-btn")
                     .flex_shrink_0()
-                    .w(px(80.))
+                    .cursor_pointer()
                     .flex()
                     .items_center()
+                    .h_full()
+                    .px(px(4.))
                     .child(
-                        div()
-                            .id("settings-btn")
-                            .cursor_pointer()
-                            .child(
-                                svg()
-                                    .external_path(icon_path)
-                                    .size(px(16.))
-                                    .text_color(icon_color)
-                            )
-                            .hover(|s| s.opacity(0.7))
-                            .when_some(on_settings, |el, cb| {
-                                el.on_mouse_up(
-                                    MouseButton::Left,
-                                    move |_: &MouseUpEvent, window: &mut Window, cx: &mut App| {
-                                        cb(window, cx);
-                                    },
-                                )
-                            })
-                    ),
+                        svg()
+                            .external_path(icon_path)
+                            .size(px(14.))
+                            .text_color(icon_color)
+                    )
+                    .hover(|s| s.opacity(0.7))
+                    .when_some(on_settings, |el, cb| {
+                        el.on_mouse_up(
+                            MouseButton::Left,
+                            move |_: &MouseUpEvent, window: &mut Window, cx: &mut App| {
+                                cb(window, cx);
+                            },
+                        )
+                    }),
             )
             // Center: total
             .child(
