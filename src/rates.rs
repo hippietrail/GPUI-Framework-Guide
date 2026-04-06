@@ -7,42 +7,53 @@ use numnum_core::config::config_dir;
 const RATES_API: &str = "https://open.er-api.com/v6/latest/USD";
 const DB_NAME: &str = "rates.db";
 
-/// Hardcoded fallback rates (USD-relative) used when no database exists
-/// and the network fetch fails (e.g. first launch while offline).
+/// Hardcoded fallback rates (USD-relative, snapshot from API).
+/// Used on first launch offline before any DB cache exists.
 pub fn hardcoded_rates() -> HashMap<String, f64> {
-    let mut m = HashMap::new();
-    m.insert("USD".into(), 1.0);
-    m.insert("EUR".into(), 0.87);
-    m.insert("GBP".into(), 0.76);
-    m.insert("JPY".into(), 149.5);
-    m.insert("CHF".into(), 0.88);
-    m.insert("CAD".into(), 1.36);
-    m.insert("AUD".into(), 1.53);
-    m.insert("CNY".into(), 7.24);
-    m.insert("INR".into(), 83.5);
-    m.insert("KRW".into(), 1330.0);
-    m.insert("RUB".into(), 92.0);
-    m.insert("BRL".into(), 5.0);
-    m.insert("MXN".into(), 17.2);
-    m.insert("SEK".into(), 10.5);
-    m.insert("NOK".into(), 10.6);
-    m.insert("DKK".into(), 6.9);
-    m.insert("PLN".into(), 4.0);
-    m.insert("CZK".into(), 23.0);
-    m.insert("HUF".into(), 360.0);
-    m.insert("TRY".into(), 27.0);
-    m.insert("SGD".into(), 1.35);
-    m.insert("HKD".into(), 7.82);
-    m.insert("THB".into(), 35.5);
-    m.insert("ZAR".into(), 18.5);
-    m.insert("AED".into(), 3.67);
-    m.insert("SAR".into(), 3.75);
-    m.insert("ILS".into(), 3.7);
-    m.insert("UAH".into(), 37.5);
-    m.insert("NZD".into(), 1.63);
-    m.insert("BTC".into(), 0.000015);
-    m.insert("ETH".into(), 0.00049);
-    m
+    HashMap::from([
+        ("AED", 3.6725), ("AFN", 64.0), ("ALL", 83.05), ("AMD", 377.09),
+        ("ANG", 1.79), ("AOA", 919.34), ("ARS", 1387.72), ("AUD", 1.45),
+        ("AWG", 1.79), ("AZN", 1.7), ("BAM", 1.7), ("BBD", 2.0),
+        ("BDT", 122.69), ("BGN", 1.7), ("BHD", 0.376), ("BIF", 2980.13),
+        ("BMD", 1.0), ("BND", 1.29), ("BOB", 6.9), ("BRL", 5.16),
+        ("BSD", 1.0), ("BTC", 0.000012), ("BTN", 93.12), ("BWP", 13.88),
+        ("BYN", 2.97), ("BZD", 2.0), ("CAD", 1.39), ("CDF", 2305.5),
+        ("CHF", 0.8), ("CLF", 0.023), ("CLP", 918.68), ("CNH", 6.88),
+        ("CNY", 6.89), ("COP", 3661.0), ("CRC", 464.84), ("CUP", 24.0),
+        ("CVE", 95.74), ("CZK", 21.29), ("DJF", 177.72), ("DKK", 6.48),
+        ("DOP", 60.58), ("DZD", 133.09), ("EGP", 54.45), ("ERN", 15.0),
+        ("ETB", 155.48), ("ETH", 0.00055), ("EUR", 0.868), ("FJD", 2.25),
+        ("FKP", 0.758), ("FOK", 6.48), ("GBP", 0.758), ("GEL", 2.7),
+        ("GGP", 0.758), ("GHS", 11.03), ("GIP", 0.758), ("GMD", 74.2),
+        ("GNF", 8771.02), ("GTQ", 7.65), ("GYD", 209.25), ("HKD", 7.84),
+        ("HNL", 26.57), ("HRK", 6.54), ("HTG", 131.12), ("HUF", 333.93),
+        ("IDR", 17003.11), ("ILS", 3.13), ("IMP", 0.758), ("INR", 93.13),
+        ("IQD", 1311.68), ("IRR", 434525.31), ("ISK", 125.1), ("JEP", 0.758),
+        ("JMD", 157.37), ("JOD", 0.709), ("JPY", 159.7), ("KES", 130.0),
+        ("KGS", 87.47), ("KHR", 3987.73), ("KID", 1.45), ("KMF", 427.17),
+        ("KRW", 1511.07), ("KWD", 0.308), ("KYD", 0.833), ("KZT", 471.05),
+        ("LAK", 21937.51), ("LBP", 89500.0), ("LKR", 314.84), ("LRD", 183.23),
+        ("LSL", 16.98), ("LYD", 6.39), ("MAD", 9.37), ("MDL", 17.54),
+        ("MGA", 4194.47), ("MKD", 53.44), ("MMK", 2100.84), ("MNT", 3597.97),
+        ("MOP", 8.07), ("MRU", 39.99), ("MUR", 46.92), ("MVR", 15.46),
+        ("MWK", 1736.53), ("MXN", 17.89), ("MYR", 4.03), ("MZN", 63.63),
+        ("NAD", 16.98), ("NGN", 1378.49), ("NIO", 36.78), ("NOK", 9.77),
+        ("NPR", 149.0), ("NZD", 1.76), ("OMR", 0.384), ("PAB", 1.0),
+        ("PEN", 3.45), ("PGK", 4.32), ("PHP", 60.37), ("PKR", 279.08),
+        ("PLN", 3.71), ("PYG", 6435.8), ("QAR", 3.64), ("RON", 4.42),
+        ("RSD", 101.76), ("RUB", 80.0), ("RWF", 1460.83), ("SAR", 3.75),
+        ("SBD", 7.95), ("SCR", 14.52), ("SDG", 458.34), ("SEK", 9.48),
+        ("SGD", 1.29), ("SHP", 0.758), ("SLE", 24.66), ("SLL", 24661.73),
+        ("SOS", 571.62), ("SRD", 37.55), ("SSP", 4587.26), ("STN", 21.27),
+        ("SYP", 112.4), ("SZL", 16.98), ("THB", 32.66), ("TJS", 9.56),
+        ("TMT", 3.5), ("TND", 2.92), ("TOP", 2.38), ("TRY", 44.58),
+        ("TTD", 6.78), ("TVD", 1.45), ("TWD", 32.04), ("TZS", 2600.21),
+        ("UAH", 43.69), ("UGX", 3745.41), ("USD", 1.0), ("UYU", 40.46),
+        ("UZS", 12247.4), ("VES", 474.06), ("VND", 26237.91), ("VUV", 119.45),
+        ("WST", 2.73), ("XAF", 569.56), ("XCD", 2.7), ("XCG", 1.79),
+        ("XDR", 0.735), ("XOF", 569.56), ("XPF", 103.61), ("YER", 238.61),
+        ("ZAR", 16.98), ("ZMW", 19.29), ("ZWG", 25.37), ("ZWL", 25.37),
+    ].map(|(k, v)| (k.to_string(), v)))
 }
 
 pub struct RateCache {
