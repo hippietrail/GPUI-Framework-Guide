@@ -93,6 +93,8 @@ fn main() {
             KeyBinding::new("ctrl-z", Undo, Some("Editor")),
             KeyBinding::new("cmd-shift-z", Redo, Some("Editor")),
             KeyBinding::new("ctrl-shift-z", Redo, Some("Editor")),
+            KeyBinding::new("tab", Tab, Some("Editor")),
+            KeyBinding::new("escape", Escape, Some("Editor")),
             KeyBinding::new("escape", EscapeSettings, Some("SettingsPane")),
         ]);
 

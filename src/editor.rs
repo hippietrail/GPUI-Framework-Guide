@@ -1,17 +1,37 @@
 use std::ops::Range;
 
 use gpui::{
-    App, Bounds, ClipboardItem, Context, CursorStyle, ElementId, ElementInputHandler, Entity,
-    EntityInputHandler, FocusHandle, Focusable, FontWeight, GlobalElementId, LayoutId,
+    App, Bounds, ClipboardItem, Context, Corner, CursorStyle, ElementId, ElementInputHandler,
+    Entity, EntityInputHandler, FocusHandle, Focusable, FontWeight, GlobalElementId, LayoutId,
     MouseButton, MouseDownEvent, MouseMoveEvent, MouseUpEvent, PaintQuad, Pixels, Point,
     SharedString, Style, TextAlign, TextRun, UTF16Selection, UnderlineStyle, Window,
-    WrappedLine, actions, div, fill, point, prelude::*, px, relative, size,
+    WrappedLine, actions, anchored, deferred, div, fill, point, prelude::*, px, relative, size,
 };
 use numnum_core::lexer::{Lexer, TokenKind};
 use numnum_core::types::{CurrencyTable, UnitTable};
 use unicode_segmentation::*;
 
+use std::collections::HashMap;
+
 use crate::theme::Theme;
+
+/// Check if a name is likely a plural form by seeing if a shorter singular exists in the same table.
+fn is_likely_plural<V>(name: &str, table: &HashMap<String, V>) -> bool {
+    if name.ends_with('s') && name.len() > 2 {
+        let singular = &name[..name.len() - 1];
+        if table.contains_key(singular) {
+            return true;
+        }
+    }
+    // "feet" → "foot" (special case)
+    if name.ends_with("feet") {
+        let singular = format!("{}foot", &name[..name.len() - 4]);
+        if table.contains_key(&singular) {
+            return true;
+        }
+    }
+    false
+}
 
 actions!(
     editor,
@@ -33,8 +53,54 @@ actions!(
         Paste,
         Undo,
         Redo,
+        Tab,
+        Escape,
     ]
 );
+
+// ── Autocomplete ──────────────────────────────────────────────────────────
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum CompletionCategory {
+    Function,
+    Unit,
+    Currency,
+    Keyword,
+    Scale,
+    Constant,
+    Variable,
+    Aggregation,
+}
+
+impl CompletionCategory {
+    fn label(&self) -> &'static str {
+        match self {
+            Self::Function => "function",
+            Self::Unit => "unit",
+            Self::Currency => "currency",
+            Self::Keyword => "keyword",
+            Self::Scale => "scale",
+            Self::Constant => "const",
+            Self::Variable => "variable",
+            Self::Aggregation => "aggregate",
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct CompletionItem {
+    label: String,
+    category: CompletionCategory,
+}
+
+struct CompletionState {
+    visible: bool,
+    anchor_offset: usize,
+    prefix: String,
+    all_candidates: Vec<CompletionItem>,
+    filtered: Vec<CompletionItem>,
+    selected_index: usize,
+}
 
 #[derive(Clone)]
 struct UndoEntry {
@@ -60,8 +126,8 @@ pub struct Editor {
     redo_stack: Vec<UndoEntry>,
     on_change: Option<OnChangeFn>,
     pub theme: Theme,
-    font_family: SharedString,
-    font_size: Pixels,
+    pub font_family: SharedString,
+    pub font_size: Pixels,
     unit_table: UnitTable,
     currency_table: CurrencyTable,
     // Per-line diagnostics (error messages shown as inlay below the line)
@@ -76,6 +142,9 @@ pub struct Editor {
     // Cursor blink state
     pub cursor_visible: bool,
     blink_epoch: usize,
+    // Autocomplete
+    completion: CompletionState,
+    pub known_variables: Vec<String>,
 }
 
 impl Editor {
@@ -109,7 +178,17 @@ impl Editor {
             line_visual_counts: Vec::new(),
             cursor_visible: true,
             blink_epoch: 0,
+            completion: CompletionState {
+                visible: false,
+                anchor_offset: 0,
+                prefix: String::new(),
+                all_candidates: Vec::new(),
+                filtered: Vec::new(),
+                selected_index: 0,
+            },
+            known_variables: Vec::new(),
         };
+        editor.rebuild_completion_candidates();
         editor.schedule_blink(cx);
         editor
     }
@@ -146,6 +225,205 @@ impl Editor {
             }
         }).detach();
         cx.notify();
+    }
+
+    // ── Autocomplete ──────────────────────────────────────────────────────
+
+    fn rebuild_completion_candidates(&mut self) {
+        let mut items: Vec<CompletionItem> = Vec::new();
+
+        // Keywords first — take priority over unit/currency aliases (e.g. "in" is keyword, not inch)
+        for name in &["in", "to", "as", "into", "of", "from", "on", "off"] {
+            items.push(CompletionItem {
+                label: name.to_string(),
+                category: CompletionCategory::Keyword,
+            });
+        }
+
+        // Functions
+        for name in &[
+            "sqrt", "cbrt", "abs", "round", "ceil", "floor", "log", "ln", "fact",
+            "sin", "cos", "tan", "asin", "acos", "atan", "sinh", "cosh", "tanh",
+            "arcsin", "arccos", "arctan",
+        ] {
+            items.push(CompletionItem {
+                label: name.to_string(),
+                category: CompletionCategory::Function,
+            });
+        }
+
+        // Constants
+        for name in &["pi", "e"] {
+            items.push(CompletionItem {
+                label: name.to_string(),
+                category: CompletionCategory::Constant,
+            });
+        }
+
+        // Aggregation
+        for name in &["sum", "total", "average", "avg", "prev"] {
+            items.push(CompletionItem {
+                label: name.to_string(),
+                category: CompletionCategory::Aggregation,
+            });
+        }
+
+        // Scale words
+        for name in &[
+            "thousand", "million", "billion", "trillion",
+            "quadrillion", "quintillion", "sextillion", "septillion",
+        ] {
+            items.push(CompletionItem {
+                label: name.to_string(),
+                category: CompletionCategory::Scale,
+            });
+        }
+
+        // Units — singular forms only (plurals work when typed, just not suggested)
+        for name in self.unit_table.name_to_id.keys() {
+            if is_likely_plural(name, &self.unit_table.name_to_id) { continue; }
+            items.push(CompletionItem {
+                label: name.clone(),
+                category: CompletionCategory::Unit,
+            });
+        }
+
+        // Currencies — singular forms only
+        for name in self.currency_table.name_to_id.keys() {
+            if is_likely_plural(name, &self.currency_table.name_to_id) { continue; }
+            items.push(CompletionItem {
+                label: name.clone(),
+                category: CompletionCategory::Currency,
+            });
+        }
+
+        // User-defined variables
+        for name in &self.known_variables {
+            items.push(CompletionItem {
+                label: name.clone(),
+                category: CompletionCategory::Variable,
+            });
+        }
+
+        items.sort_by(|a, b| a.label.cmp(&b.label));
+        // Deduplicate by label (keep first occurrence — keywords/functions win over unit aliases)
+        items.dedup_by(|a, b| a.label == b.label);
+        self.completion.all_candidates = items;
+    }
+
+    pub fn set_known_variables(&mut self, vars: Vec<String>) {
+        if self.known_variables != vars {
+            self.known_variables = vars;
+            self.rebuild_completion_candidates();
+        }
+    }
+
+    fn find_word_start(&self, offset: usize) -> usize {
+        let bytes = self.content.as_bytes();
+        let mut i = offset;
+        while i > 0 {
+            let prev = i - 1;
+            if prev < bytes.len() && (bytes[prev].is_ascii_alphanumeric() || bytes[prev] == b'_') {
+                i = prev;
+            } else {
+                break;
+            }
+        }
+        i
+    }
+
+    fn update_completion_state(&mut self) {
+        let offset = self.cursor_offset();
+        let prefix_start = self.find_word_start(offset);
+        let prefix = &self.content[prefix_start..offset];
+
+        // Don't show on comment or header lines
+        let (line, _) = self.line_col_for_offset(offset);
+        let line_text: &str = self.content.split('\n').nth(line).unwrap_or("");
+        let trimmed = line_text.trim_start();
+        if trimmed.starts_with("//") || trimmed.starts_with('#') {
+            self.completion.visible = false;
+            return;
+        }
+
+        // Must be >= 2 chars, starting with alphabetic
+        if prefix.len() >= 2
+            && prefix.bytes().next().map(|c| c.is_ascii_alphabetic()).unwrap_or(false)
+        {
+            self.completion.anchor_offset = prefix_start;
+            self.completion.prefix = prefix.to_lowercase();
+            self.filter_completions();
+            self.completion.visible = !self.completion.filtered.is_empty();
+            self.completion.selected_index = 0;
+        } else {
+            self.completion.visible = false;
+        }
+    }
+
+    fn filter_completions(&mut self) {
+        let prefix = &self.completion.prefix;
+        self.completion.filtered = self
+            .completion
+            .all_candidates
+            .iter()
+            .filter(|item| item.label.to_lowercase().starts_with(prefix))
+            .take(50) // cap filtered list
+            .cloned()
+            .collect();
+    }
+
+    fn accept_completion(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if !self.completion.visible || self.completion.filtered.is_empty() {
+            return;
+        }
+        let item = self.completion.filtered[self.completion.selected_index].clone();
+        let insert_text = if item.category == CompletionCategory::Function {
+            format!("{}(", item.label)
+        } else {
+            item.label
+        };
+
+        let anchor = self.completion.anchor_offset;
+        let cursor = self.cursor_offset();
+
+        self.push_undo();
+        self.content = format!(
+            "{}{}{}",
+            &self.content[..anchor],
+            insert_text,
+            &self.content[cursor..],
+        );
+        let new_pos = anchor + insert_text.len();
+        self.selected_range = new_pos..new_pos;
+        self.completion.visible = false;
+        self.pause_blinking(cx);
+        self.fire_change(window, cx);
+        cx.notify();
+    }
+
+    fn completion_move_up(&mut self, cx: &mut Context<Self>) {
+        if self.completion.selected_index > 0 {
+            self.completion.selected_index -= 1;
+        } else {
+            self.completion.selected_index = self.completion.filtered.len().saturating_sub(1);
+        }
+        cx.notify();
+    }
+
+    fn completion_move_down(&mut self, cx: &mut Context<Self>) {
+        if self.completion.selected_index + 1 < self.completion.filtered.len() {
+            self.completion.selected_index += 1;
+        } else {
+            self.completion.selected_index = 0;
+        }
+        cx.notify();
+    }
+
+    fn dismiss_completion(&mut self, cx: &mut Context<Self>) {
+        if self.completion.visible {
+            self.completion.visible = false;
+            cx.notify();
+        }
     }
 
     pub fn content(&self) -> &str {
@@ -219,6 +497,10 @@ impl Editor {
     // --- Navigation actions ---
 
     fn enter(&mut self, _: &Enter, window: &mut Window, cx: &mut Context<Self>) {
+        if self.completion.visible {
+            self.accept_completion(window, cx);
+            return;
+        }
         self.push_undo();
         let range = self.selected_range.clone();
         self.content = format!(
@@ -275,6 +557,10 @@ impl Editor {
     }
 
     fn up(&mut self, _: &Up, _: &mut Window, cx: &mut Context<Self>) {
+        if self.completion.visible {
+            self.completion_move_up(cx);
+            return;
+        }
         let (line, col) = self.line_col_for_offset(self.cursor_offset());
         if line > 0 {
             self.move_to(self.offset_for_line_col(line - 1, col), cx);
@@ -284,6 +570,10 @@ impl Editor {
     }
 
     fn down(&mut self, _: &Down, _: &mut Window, cx: &mut Context<Self>) {
+        if self.completion.visible {
+            self.completion_move_down(cx);
+            return;
+        }
         let (line, col) = self.line_col_for_offset(self.cursor_offset());
         let count = self.line_count();
         if line + 1 < count {
@@ -291,6 +581,16 @@ impl Editor {
         } else {
             self.move_to(self.content.len(), cx);
         }
+    }
+
+    fn tab(&mut self, _: &Tab, window: &mut Window, cx: &mut Context<Self>) {
+        if self.completion.visible {
+            self.accept_completion(window, cx);
+        }
+    }
+
+    fn escape(&mut self, _: &Escape, _: &mut Window, cx: &mut Context<Self>) {
+        self.dismiss_completion(cx);
     }
 
     fn select_left(&mut self, _: &SelectLeft, _: &mut Window, cx: &mut Context<Self>) {
@@ -402,6 +702,7 @@ impl Editor {
     fn move_to(&mut self, offset: usize, cx: &mut Context<Self>) {
         self.selected_range = offset..offset;
         self.selection_reversed = false;
+        self.completion.visible = false;
         self.pause_blinking(cx);
         cx.notify();
     }
@@ -679,6 +980,7 @@ impl EntityInputHandler for Editor {
         self.marked_range.take();
         self.pause_blinking(cx);
         self.fire_change(window, cx);
+        self.update_completion_state();
         cx.notify();
     }
 
@@ -716,6 +1018,7 @@ impl EntityInputHandler for Editor {
                 pos..pos
             });
         self.fire_change(window, cx);
+        self.update_completion_state();
         cx.notify();
     }
 
@@ -1144,15 +1447,131 @@ impl Element for EditorLineElement {
 
 // --- Render implementation ---
 
+impl Editor {
+    /// Compute the popup position for the completion menu (window coordinates).
+    /// Uses previous-frame cached layout data (same pattern as line_visual_counts).
+    fn completion_popup_position(&self) -> Option<Point<Pixels>> {
+        let bounds = self.last_bounds.as_ref()?;
+        let (line, col) = self.line_col_for_offset(self.completion.anchor_offset);
+        let wrapped = self.line_layouts.get(line)?.as_ref()?;
+
+        let y_base: Pixels = self
+            .line_visual_counts
+            .iter()
+            .take(line)
+            .map(|&c| self.line_height * c as f32)
+            .sum();
+
+        let pos = wrapped.position_for_index(col, self.line_height)?;
+
+        Some(point(
+            bounds.left() + pos.x,
+            bounds.top() + y_base + pos.y + self.line_height,
+        ))
+    }
+
+    fn render_completion_list(&self, entity: &Entity<Self>, cx: &mut Context<Self>) -> gpui::AnyElement {
+        let max_visible: usize = 8;
+        let items = &self.completion.filtered;
+        let selected = self.completion.selected_index;
+        let bg = self.theme.editor_background;
+        let border_color = self.theme.text_dimmed;
+        let text_color = self.theme.text;
+        let sel_bg = self.theme.divider;
+
+        let mut list = div()
+            .id("completion-popup")
+            .flex()
+            .flex_col()
+            .w(px(260.))
+            .bg(bg)
+            .border_1()
+            .border_color(border_color)
+            .rounded(px(6.))
+            .py(px(2.))
+            .occlude()
+            .on_mouse_down_out(cx.listener(|editor, _: &MouseDownEvent, _window, cx| {
+                editor.completion.visible = false;
+                cx.notify();
+            }));
+
+        for (i, item) in items.iter().take(max_visible).enumerate() {
+            let is_selected = i == selected;
+            let category_color = match item.category {
+                CompletionCategory::Function => self.theme.syn_function,
+                CompletionCategory::Unit => self.theme.syn_unit,
+                CompletionCategory::Currency => self.theme.syn_currency,
+                CompletionCategory::Keyword => self.theme.syn_keyword,
+                CompletionCategory::Scale => self.theme.syn_scale,
+                CompletionCategory::Constant => self.theme.syn_number,
+                CompletionCategory::Variable => self.theme.syn_variable,
+                CompletionCategory::Aggregation => self.theme.syn_function,
+            };
+            let label = item.label.clone();
+            let cat_label = item.category.label().to_string();
+            let entity_clone = entity.clone();
+
+            list = list.child(
+                div()
+                    .id(ElementId::Name(format!("c-{i}").into()))
+                    .flex()
+                    .flex_row()
+                    .justify_between()
+                    .px(px(8.))
+                    .py(px(3.))
+                    .text_size(self.font_size * 0.85)
+                    .font_family(self.font_family.clone())
+                    .when(is_selected, |el| el.bg(sel_bg))
+                    .cursor(CursorStyle::PointingHand)
+                    .hover(|s| s.bg(sel_bg))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        move |_: &MouseDownEvent, window: &mut Window, cx: &mut App| {
+                            entity_clone.update(cx, |editor, cx| {
+                                editor.completion.selected_index = i;
+                                editor.accept_completion(window, cx);
+                            });
+                        },
+                    )
+                    .child(div().text_color(text_color).child(label))
+                    .child(
+                        div()
+                            .text_color(category_color)
+                            .text_size(self.font_size * 0.7)
+                            .child(cat_label),
+                    ),
+            );
+        }
+
+        list.into_any_element()
+    }
+}
+
 impl Render for Editor {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let line_count = self.line_count();
         self.line_height = window.line_height();
+
+        // Pre-compute completion popup position BEFORE clearing line_layouts
+        // (uses previous-frame cached data, same pattern as line_visual_counts)
+        let show_completion =
+            self.completion.visible && !self.completion.filtered.is_empty();
+        let completion_position = if show_completion {
+            self.completion_popup_position()
+        } else {
+            None
+        };
+
         self.line_layouts.clear();
         // Preserve line_visual_counts from previous frame (used by request_layout for height hints)
         // They will be overwritten during paint of each line
 
         let entity = cx.entity().clone();
+        let completion_element = if show_completion {
+            Some(self.render_completion_list(&entity, cx))
+        } else {
+            None
+        };
 
         div()
             .flex()
@@ -1177,6 +1596,8 @@ impl Render for Editor {
             .on_action(cx.listener(Self::paste))
             .on_action(cx.listener(Self::undo))
             .on_action(cx.listener(Self::redo))
+            .on_action(cx.listener(Self::tab))
+            .on_action(cx.listener(Self::escape))
             .on_mouse_down(MouseButton::Left, cx.listener(Self::on_mouse_down))
             .on_mouse_up(MouseButton::Left, cx.listener(Self::on_mouse_up))
             .on_mouse_up_out(MouseButton::Left, cx.listener(Self::on_mouse_up))
@@ -1228,7 +1649,7 @@ impl Render for Editor {
                                     .items_end()
                                     .justify_end()
                                     .pr(gutter_pad)
-                                    .text_size(self.font_size)
+                                    .text_size(self.font_size * 0.7)
                                     .text_color(dimmed)
                                     .child(format!("{}", i + 1)),
                             )
@@ -1261,6 +1682,20 @@ impl Render for Editor {
                     }
                 }
                 children
+            })
+            // Completion popup (floating, rendered above content)
+            .when_some(completion_element, |el, popup| {
+                let pos = completion_position.unwrap_or(point(px(0.), px(0.)));
+                el.child(
+                    deferred(
+                        anchored()
+                            .anchor(Corner::TopLeft)
+                            .position(pos)
+                            .snap_to_window_with_margin(px(8.))
+                            .child(popup),
+                    )
+                    .with_priority(10),
+                )
             })
     }
 }
