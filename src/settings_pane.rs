@@ -183,23 +183,17 @@ impl Render for SettingsPane {
             .on_action(cx.listener(Self::on_escape))
             // Click on background (outside the card) closes settings
             .id("settings-bg")
-            .on_mouse_up(
-                MouseButton::Left,
-                cx.listener(|this, _: &MouseUpEvent, _window, cx| {
-                    this.close(cx);
-                }),
-            )
+            .on_click(cx.listener(|this, _: &gpui::ClickEvent, _window, cx| {
+                this.close(cx);
+            }))
             .child(
                 div()
                     .w(px(400.))
-                    // Stop click propagation so clicking the card doesn't close
                     .id("settings-card")
-                    .on_mouse_up(
-                        MouseButton::Left,
-                        |_: &MouseUpEvent, _window: &mut Window, _cx: &mut App| {
-                            // Absorb click — don't propagate to background
-                        },
-                    )
+                    .on_click(|_: &gpui::ClickEvent, _window: &mut Window, cx: &mut App| {
+                        // Absorb click so it doesn't reach background
+                        cx.stop_propagation();
+                    })
                     .bg(theme.editor_background)
                     .rounded(px(12.))
                     .p(px(24.))
