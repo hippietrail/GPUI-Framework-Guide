@@ -28,16 +28,13 @@ fn main() {
         std::thread::spawn(move || {
             let cache = rates::RateCache::new();
 
-            // First: load cached rates from SQLite (fast, no network)
             let cached = cache.get_cached_rates();
             if !cached.is_empty() {
                 if let Ok(mut rates) = rates_ref.lock() {
                     *rates = cached;
                 }
-                eprintln!("[INFO] cached exchange rates loaded");
             }
 
-            // Then: fetch live rates from API
             match cache.fetch_and_store() {
                 Some(fresh) => {
                     let count = fresh.len();
