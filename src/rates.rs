@@ -9,7 +9,7 @@ const DB_NAME: &str = "rates.db";
 
 /// Hardcoded fallback rates (USD-relative) used when no database exists
 /// and the network fetch fails (e.g. first launch while offline).
-fn hardcoded_rates() -> HashMap<String, f64> {
+pub fn hardcoded_rates() -> HashMap<String, f64> {
     let mut m = HashMap::new();
     m.insert("USD".into(), 1.0);
     m.insert("EUR".into(), 0.87);

@@ -17,16 +17,28 @@ fn main() {
     let settings = Settings::load();
     let theme = Theme::from_settings(&settings);
 
-    // Load cached rates instantly (no network), then fetch live in background
+    // Start with hardcoded rates (instant), load cached + live in background
     let live_rates = std::sync::Arc::new(std::sync::Mutex::new(
-        rates::RateCache::new().get_cached_rates()
+        rates::hardcoded_rates()
     ));
 
-    // Spawn background thread for network fetch
+    // Background thread: load cached from SQLite, then fetch live from API
     {
         let rates_ref = live_rates.clone();
         std::thread::spawn(move || {
-            match rates::RateCache::new().fetch_and_store() {
+            let cache = rates::RateCache::new();
+
+            // First: load cached rates from SQLite (fast, no network)
+            let cached = cache.get_cached_rates();
+            if !cached.is_empty() {
+                if let Ok(mut rates) = rates_ref.lock() {
+                    *rates = cached;
+                }
+                eprintln!("[INFO] cached exchange rates loaded");
+            }
+
+            // Then: fetch live rates from API
+            match cache.fetch_and_store() {
                 Some(fresh) => {
                     let count = fresh.len();
                     if let Ok(mut rates) = rates_ref.lock() {
