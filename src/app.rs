@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use gpui::{
     App, Context, CursorStyle, Entity, Focusable, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Pixels, Render, ScrollDelta, ScrollHandle, ScrollWheelEvent, SharedString,
-    Window, div, point, prelude::*, px,
+    Window, WindowControlArea, div, point, prelude::*, px,
 };
 
 use gpui::relative;
@@ -37,6 +37,7 @@ pub struct NumNumApp {
     show_diagnostics: bool,
     viewport_height: Pixels,
     autoscroll_to_line: Option<usize>,
+    title_bar: String,
 }
 
 impl NumNumApp {
@@ -255,6 +256,7 @@ impl NumNumApp {
             show_diagnostics,
             viewport_height: px(0.),
             autoscroll_to_line: None,
+            title_bar: settings.window.title_bar.clone(),
         }
     }
 }
@@ -344,8 +346,9 @@ impl Render for NumNumApp {
 
         // Auto-scroll to cursor using real layout data
         let line_height = window.line_height();
-        // Scrollable viewport = window height - status bar (28px)
-        let scroll_viewport_height = self.viewport_height - px(28.);
+        // Scrollable viewport = window height - status bar (28px) - custom titlebar if present
+        let titlebar_height = if self.title_bar == "numnum" { px(32.) } else { px(0.) };
+        let scroll_viewport_height = self.viewport_height - px(28.) - titlebar_height;
         if let Some(target_line) = self.autoscroll_to_line.take() {
             let visual_counts = &self.editor.read(cx).line_visual_counts;
             if !visual_counts.is_empty() && scroll_viewport_height > px(0.) {
@@ -393,6 +396,76 @@ impl Render for NumNumApp {
             .font_family(self.font_family.clone())
             .text_size(px(self.font_size))
             .on_scroll_wheel(cx.listener(Self::on_ctrl_scroll))
+            // Custom "numnum" title bar
+            .when(self.title_bar == "numnum", |el| {
+                let close_color = self.theme.error;
+                let minimize_color = self.theme.syn_variable;
+                let maximize_color = self.theme.result;
+                let title_color = self.theme.text_muted;
+                let bar_bg = self.theme.status_bar;
+
+                el.child(
+                    div()
+                        .id("numnum-titlebar")
+                        .w_full()
+                        .h(px(32.))
+                        .flex()
+                        .flex_row()
+                        .items_center()
+                        .bg(bar_bg)
+                        .window_control_area(WindowControlArea::Drag)
+                        // Traffic light buttons (left side)
+                        .child(
+                            div()
+                                .flex()
+                                .flex_row()
+                                .gap(px(8.))
+                                .pl(px(12.))
+                                .child(
+                                    div()
+                                        .id("tb-close")
+                                        .size(px(12.))
+                                        .rounded_full()
+                                        .bg(close_color)
+                                        .hover(|s| s.bg(close_color))
+                                        .cursor(CursorStyle::PointingHand)
+                                        .window_control_area(WindowControlArea::Close),
+                                )
+                                .child(
+                                    div()
+                                        .id("tb-min")
+                                        .size(px(12.))
+                                        .rounded_full()
+                                        .bg(minimize_color)
+                                        .hover(|s| s.bg(minimize_color))
+                                        .cursor(CursorStyle::PointingHand)
+                                        .window_control_area(WindowControlArea::Min),
+                                )
+                                .child(
+                                    div()
+                                        .id("tb-max")
+                                        .size(px(12.))
+                                        .rounded_full()
+                                        .bg(maximize_color)
+                                        .hover(|s| s.bg(maximize_color))
+                                        .cursor(CursorStyle::PointingHand)
+                                        .window_control_area(WindowControlArea::Max),
+                                ),
+                        )
+                        // Centered title
+                        .child(
+                            div()
+                                .flex_1()
+                                .flex()
+                                .justify_center()
+                                .text_size(px(13.))
+                                .text_color(title_color)
+                                .child("NumNum"),
+                        )
+                        // Right spacer (same width as traffic lights for centering)
+                        .child(div().w(px(68.))),
+                )
+            })
             // Only attach divider drag handlers when calculator is showing
             .when(!settings_visible, |el| {
                 el.on_mouse_move(cx.listener(Self::on_divider_move))

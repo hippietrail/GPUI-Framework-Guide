@@ -6,7 +6,7 @@ mod settings_pane;
 mod status_bar;
 mod theme;
 
-use gpui::{App, Bounds, Focusable, KeyBinding, WindowAppearance, WindowBounds, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, Focusable, KeyBinding, WindowAppearance, WindowBounds, WindowDecorations, WindowOptions, prelude::*, px, size};
 use gpui_platform::application;
 use numnum_core::{Settings, ThemeFile};
 
@@ -108,12 +108,20 @@ fn main() {
         let light_theme_name = settings.appearance.light_theme.clone();
         let _pre_window_theme = theme.clone();
 
+        let custom_decorations = matches!(
+            settings.window.title_bar.as_str(), "none" | "numnum"
+        );
         let _window_handle = cx
             .open_window(
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     focus: true,
                     window_min_size: Some(size(px(480.0), px(360.0))),
+                    window_decorations: if custom_decorations {
+                        Some(WindowDecorations::Client)
+                    } else {
+                        None
+                    },
                     ..Default::default()
                 },
                 move |window, cx| {

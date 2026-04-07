@@ -115,6 +115,17 @@ impl SettingsPane {
         cx.notify();
     }
 
+    fn cycle_title_bar(&mut self, cx: &mut Context<Self>) {
+        let next = match self.settings.window.title_bar.as_str() {
+            "system" => "numnum",
+            "numnum" => "none",
+            _ => "system",
+        };
+        self.settings.window.title_bar = next.to_string();
+        self.settings.save();
+        cx.notify();
+    }
+
     fn toggle_show_diagnostics(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.show_diagnostics = !self.settings.editor.show_diagnostics;
         self.settings.save();
@@ -225,6 +236,11 @@ impl Render for SettingsPane {
             _ => "Auto",
         };
         let show_diag_val = if settings.editor.show_diagnostics { "Yes" } else { "No" };
+        let title_bar_val = match settings.window.title_bar.as_str() {
+            "numnum" => "NumNum",
+            "none" => "None",
+            _ => "System",
+        };
 
         // Theme display names
         let all_themes = list_themes();
@@ -643,6 +659,38 @@ impl Render for SettingsPane {
                                     cx.listener(|this, _: &MouseUpEvent, _window, cx| {
                                         this.toggle_show_diagnostics(cx);
                                     }),
+                                ),
+                        ),
+                    )
+                    // Title Bar (cycle system → numnum → none)
+                    .child(
+                        setting_row(
+                            &theme,
+                            "Title Bar",
+                            div()
+                                .flex()
+                                .flex_row()
+                                .gap_2()
+                                .items_center()
+                                .child(
+                                    div()
+                                        .id("titlebar-cycle")
+                                        .cursor_pointer()
+                                        .text_color(theme.text)
+                                        .hover(|s| s.text_color(theme.text_muted))
+                                        .child(format!("{} \u{25BE}", title_bar_val))
+                                        .on_mouse_up(
+                                            MouseButton::Left,
+                                            cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                                this.cycle_title_bar(cx);
+                                            }),
+                                        ),
+                                )
+                                .child(
+                                    div()
+                                        .text_size(px(10.))
+                                        .text_color(theme.text_dimmed)
+                                        .child("(restart)"),
                                 ),
                         ),
                     ),

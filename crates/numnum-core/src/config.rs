@@ -15,6 +15,7 @@ pub struct Settings {
 pub struct WindowSettings {
     pub width: f32,
     pub height: f32,
+    pub title_bar: String, // "system", "none", "numnum"
 }
 
 #[derive(Debug, Clone)]
@@ -520,6 +521,7 @@ impl Settings {
             window: WindowSettings {
                 width: get_f32("window", "width", 680.0),
                 height: get_f32("window", "height", 620.0),
+                title_bar: get("window", "title_bar", "system"),
             },
         }
     }
@@ -556,6 +558,7 @@ full_precision = {full_precision}
 [window]
 width = {win_width}
 height = {win_height}
+title_bar = "{win_title_bar}"
 "#,
             mode = a.mode,
             dark_theme = a.dark_theme,
@@ -571,6 +574,7 @@ height = {win_height}
             full_precision = e.copy_full_precision,
             win_width = self.window.width,
             win_height = self.window.height,
+            win_title_bar = self.window.title_bar,
         );
         let _ = std::fs::write(&path, toml);
     }
@@ -598,6 +602,7 @@ impl Default for Settings {
             window: WindowSettings {
                 width: 680.0,
                 height: 620.0,
+                title_bar: "system".to_string(),
             },
         }
     }
