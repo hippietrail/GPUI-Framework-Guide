@@ -624,7 +624,23 @@ impl EvalContext {
 
         // Propagate units/currency from either side
         match (lhs, rhs) {
-            // Compound × unit → too complex, strip to plain number
+            // Compound × unit → cancel matching factors (e.g. km/h * h → km)
+            (Value::WithCompoundUnit(_, factors), Value::WithUnit(_, u))
+                if matches!(op, BinOp::Mul | BinOp::Div) =>
+            {
+                let exp: i8 = if matches!(op, BinOp::Div) { -1 } else { 1 };
+                let mut new_factors = factors.clone();
+                merge_unit_factor(&mut new_factors, *u, exp);
+                simplify_compound(result, new_factors, &self.unit_table)
+            }
+            (Value::WithUnit(_, u), Value::WithCompoundUnit(_, factors))
+                if matches!(op, BinOp::Mul) =>
+            {
+                let mut new_factors = factors.clone();
+                merge_unit_factor(&mut new_factors, *u, 1);
+                simplify_compound(result, new_factors, &self.unit_table)
+            }
+            // Other compound × unit combinations → plain number
             (Value::WithCompoundUnit(..), Value::WithUnit(..))
             | (Value::WithUnit(..), Value::WithCompoundUnit(..)) => {
                 Ok(Value::Number(result))
@@ -682,6 +698,47 @@ fn is_valid_compound(num_dim: Dimension, den_dim: Dimension, op: BinOp) -> bool 
             (Length, Length)
         ),
         _ => false,
+    }
+}
+
+fn merge_unit_factor(factors: &mut Vec<(UnitId, i8)>, unit: UnitId, exp: i8) {
+    for entry in factors.iter_mut() {
+        if entry.0 == unit {
+            entry.1 += exp;
+            return;
+        }
+    }
+    factors.push((unit, exp));
+}
+
+fn simplify_compound(value: f64, mut factors: Vec<(UnitId, i8)>, unit_table: &UnitTable) -> Result<Value, EvalError> {
+    factors.retain(|&(_, exp)| exp != 0);
+    match factors.len() {
+        0 => Ok(Value::Number(value)),
+        1 if factors[0].1 == 1 => Ok(Value::WithUnit(value, factors[0].0)),
+        _ => {
+            // Validate: only allow compounds with exponents of exactly 1 and -1
+            // (e.g. km/h yes, km²/L no), or single-unit squared/cubed (m², m³)
+            let pos: Vec<_> = factors.iter().filter(|(_, e)| *e > 0).collect();
+            let neg: Vec<_> = factors.iter().filter(|(_, e)| *e < 0).collect();
+
+            // Single unit with exponent 2 or 3 (m², m³)
+            if pos.len() == 1 && neg.is_empty() && (pos[0].1 == 2 || pos[0].1 == 3) {
+                return Ok(Value::WithCompoundUnit(value, factors));
+            }
+            // Rate unit: exactly one numerator (exp=1) and one denominator (exp=-1)
+            if pos.len() == 1 && neg.len() == 1 && pos[0].1 == 1 && neg[0].1 == -1 {
+                let pos_dim = unit_table.get(pos[0].0).map(|u| u.dimension);
+                let neg_dim = unit_table.get(neg[0].0).map(|u| u.dimension);
+                if let (Some(pd), Some(nd)) = (pos_dim, neg_dim) {
+                    if is_valid_compound(pd, nd, BinOp::Div) {
+                        return Ok(Value::WithCompoundUnit(value, factors));
+                    }
+                }
+            }
+            // Everything else: strip to plain number
+            Ok(Value::Number(value))
+        }
     }
 }
 
