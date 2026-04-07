@@ -333,6 +333,21 @@ impl UnitTable {
         self.units.get(id.0 as usize)
     }
 
+    /// Find the area unit corresponding to squaring a length unit.
+    /// E.g. meter → sq_m, kilometer → sq_km, foot → sq_ft.
+    pub fn lookup_squared(&self, unit_id: UnitId) -> Option<UnitId> {
+        let def = self.get(unit_id)?;
+        if def.dimension != Dimension::Length { return None; }
+        let sq_to_base = def.to_base * def.to_base;
+        // Find an Area unit whose to_base matches the squared factor
+        for (i, u) in self.units.iter().enumerate() {
+            if u.dimension == Dimension::Area && (u.to_base - sq_to_base).abs() < sq_to_base * 1e-6 {
+                return Some(UnitId(i as u16));
+            }
+        }
+        None
+    }
+
     pub fn convert(&self, value: f64, from: UnitId, to: UnitId) -> Option<f64> {
         let from_def = self.get(from)?;
         let to_def = self.get(to)?;
@@ -656,6 +671,7 @@ pub enum Value {
     Number(f64),
     NumberRepr(f64, NumRepr), // number with explicit display format
     WithUnit(f64, UnitId),
+    WithCompoundUnit(f64, Vec<(UnitId, i8)>), // value + units with exponents (e.g. km/h, m²)
     WithCurrency(f64, CurrencyId),
     Percent(f64), // stored as fraction: 50% = 0.5
     None,
@@ -665,7 +681,7 @@ impl Value {
     pub fn as_number(&self) -> Option<f64> {
         match self {
             Value::Number(n) | Value::NumberRepr(n, _) => Some(*n),
-            Value::WithUnit(n, _) => Some(*n),
+            Value::WithUnit(n, _) | Value::WithCompoundUnit(n, _) => Some(*n),
             Value::WithCurrency(n, _) => Some(*n),
             Value::Percent(n) => Some(*n * 100.0),
             Value::None => None,
@@ -678,7 +694,7 @@ impl fmt::Display for Value {
         match self {
             Value::Number(n) => write!(f, "{}", crate::format::format_number(*n, 2)),
             Value::NumberRepr(n, repr) => write!(f, "{}", crate::format::format_number_repr(*n, *repr)),
-            Value::WithUnit(n, _) => write!(f, "{}", crate::format::format_number(*n, 2)),
+            Value::WithUnit(n, _) | Value::WithCompoundUnit(n, _) => write!(f, "{}", crate::format::format_number(*n, 2)),
             Value::WithCurrency(n, _) => write!(f, "{}", crate::format::format_number(*n, 2)),
             Value::Percent(n) => write!(f, "{} %", crate::format::format_number(*n * 100.0, 2)),
             Value::None => Ok(()),

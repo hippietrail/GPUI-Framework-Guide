@@ -484,10 +484,41 @@ impl EvalContext {
                 if matches!(op, BinOp::Div) {
                     return Ok(Value::Number(result));
                 }
+                // Multiplication of same-dimension units => squared unit
+                if matches!(op, BinOp::Mul) {
+                    if let Some(sq_id) = self.unit_table.lookup_squared(*lu) {
+                        return Ok(Value::WithUnit(result, sq_id));
+                    }
+                    return Ok(Value::WithCompoundUnit(result, vec![(*lu, 2)]));
+                }
                 return Ok(Value::WithUnit(result, *lu));
             } else if matches!(op, BinOp::Add | BinOp::Sub) {
                 // Different dimensions on add/sub => error
                 return Err(EvalError::IncompatibleUnits);
+            }
+            // Different dimensions: mul/div produce compound units
+            if matches!(op, BinOp::Mul | BinOp::Div) {
+                let result = match op {
+                    BinOp::Mul => *ln * *rn,
+                    BinOp::Div => {
+                        if *rn == 0.0 { return Err(EvalError::DivisionByZero); }
+                        *ln / *rn
+                    }
+                    _ => unreachable!(),
+                };
+                let exp = if matches!(op, BinOp::Div) { -1i8 } else { 1i8 };
+                // Check if one unit is the squared form of the other (e.g. m² * m → m³)
+                if matches!(op, BinOp::Mul) {
+                    if self.unit_table.lookup_squared(*ru) == Some(*lu) {
+                        // LHS is the squared form of RHS: sq_m * m → m³
+                        return Ok(Value::WithCompoundUnit(result, vec![(*ru, 3)]));
+                    }
+                    if self.unit_table.lookup_squared(*lu) == Some(*ru) {
+                        // RHS is the squared form of LHS: m * sq_m → m³
+                        return Ok(Value::WithCompoundUnit(result, vec![(*lu, 3)]));
+                    }
+                }
+                return Ok(Value::WithCompoundUnit(result, vec![(*lu, 1), (*ru, exp)]));
             }
         }
 
@@ -590,6 +621,30 @@ impl EvalContext {
 
         // Propagate units/currency from either side
         match (lhs, rhs) {
+            // Compound × unit → merge exponents
+            (Value::WithCompoundUnit(_, factors), Value::WithUnit(_, u))
+                if matches!(op, BinOp::Mul | BinOp::Div) =>
+            {
+                let exp: i8 = if matches!(op, BinOp::Div) { -1 } else { 1 };
+                let mut new_factors = factors.clone();
+                merge_unit_factor(&mut new_factors, *u, exp);
+                simplify_compound(result, new_factors)
+            }
+            (Value::WithUnit(_, u), Value::WithCompoundUnit(_, factors))
+                if matches!(op, BinOp::Mul) =>
+            {
+                let mut new_factors = vec![(*u, 1i8)];
+                for &(id, e) in factors.iter() { merge_unit_factor(&mut new_factors, id, e); }
+                simplify_compound(result, new_factors)
+            }
+            // Compound × number → keep compound
+            (Value::WithCompoundUnit(_, factors), _) => {
+                Ok(Value::WithCompoundUnit(result, factors.clone()))
+            }
+            (_, Value::WithCompoundUnit(_, factors)) if matches!(op, BinOp::Mul) => {
+                Ok(Value::WithCompoundUnit(result, factors.clone()))
+            }
+
             (Value::WithUnit(_, u), _) if matches!(op, BinOp::Add | BinOp::Sub) => {
                 Ok(Value::WithUnit(result, *u))
             }
@@ -602,6 +657,28 @@ impl EvalContext {
 
             _ => Ok(Value::Number(result)),
         }
+    }
+}
+
+/// Merge a unit factor into an existing compound unit list, combining exponents.
+fn merge_unit_factor(factors: &mut Vec<(UnitId, i8)>, unit: UnitId, exp: i8) {
+    for entry in factors.iter_mut() {
+        if entry.0 == unit {
+            entry.1 += exp;
+            return;
+        }
+    }
+    factors.push((unit, exp));
+}
+
+/// Simplify compound unit: remove zero-exponent entries.
+/// If only one factor with exp=1 remains, return WithUnit. If empty, return Number.
+fn simplify_compound(value: f64, mut factors: Vec<(UnitId, i8)>) -> Result<Value, EvalError> {
+    factors.retain(|&(_, exp)| exp != 0);
+    match factors.len() {
+        0 => Ok(Value::Number(value)),
+        1 if factors[0].1 == 1 => Ok(Value::WithUnit(value, factors[0].0)),
+        _ => Ok(Value::WithCompoundUnit(value, factors)),
     }
 }
 

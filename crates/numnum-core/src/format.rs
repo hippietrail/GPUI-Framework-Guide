@@ -19,6 +19,9 @@ pub fn format_value_full_precision(value: &Value, unit_table: &UnitTable, curren
                 None => format_full(*n),
             }
         }
+        Value::WithCompoundUnit(n, factors) => {
+            format!("{} {}", format_full(*n), format_compound_unit(factors, unit_table))
+        }
         Value::WithCurrency(n, id) => {
             match currency_table.get(*id) {
                 Some(currency) => format_currency_with_precision(*n, &currency.display_format, None).replace(
@@ -45,6 +48,9 @@ pub fn format_value_with_precision(value: &Value, unit_table: &UnitTable, curren
                 Some(unit) => format!("{} {}", format_number(*n, precision), unit.display),
                 None => format_number(*n, precision),
             }
+        }
+        Value::WithCompoundUnit(n, factors) => {
+            format!("{} {}", format_number(*n, precision), format_compound_unit(factors, unit_table))
         }
         Value::WithCurrency(n, id) => {
             match currency_table.get(*id) {
@@ -102,6 +108,41 @@ pub fn format_number_repr(n: f64, repr: NumRepr) -> String {
             let s = s.trim_end_matches('0').trim_end_matches('.');
             format!("{}e{}", s, exp)
         }
+    }
+}
+
+fn format_compound_unit(factors: &[(UnitId, i8)], unit_table: &UnitTable) -> String {
+    let mut numerator = Vec::new();
+    let mut denominator = Vec::new();
+
+    for &(id, exp) in factors {
+        let display = unit_table.get(id)
+            .map(|u| u.display.as_str())
+            .unwrap_or("?");
+        if exp > 0 {
+            numerator.push((display, exp));
+        } else if exp < 0 {
+            denominator.push((display, -exp));
+        }
+    }
+
+    let format_part = |parts: &[(&str, i8)]| -> String {
+        parts.iter().map(|(name, exp)| {
+            match exp {
+                1 => name.to_string(),
+                2 => format!("{}\u{00B2}", name),   // ²
+                3 => format!("{}\u{00B3}", name),   // ³
+                _ => format!("{}^{}", name, exp),
+            }
+        }).collect::<Vec<_>>().join("\u{00B7}") // middle dot for multiplication
+    };
+
+    if denominator.is_empty() {
+        format_part(&numerator)
+    } else if numerator.is_empty() {
+        format!("1/{}", format_part(&denominator))
+    } else {
+        format!("{}/{}", format_part(&numerator), format_part(&denominator))
     }
 }
 
