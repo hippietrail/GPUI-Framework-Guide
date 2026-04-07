@@ -154,6 +154,8 @@ impl Editor {
         font_family: String,
         font_size: f32,
         on_change: Option<OnChangeFn>,
+        unit_table: UnitTable,
+        currency_table: CurrencyTable,
     ) -> Self {
         let mut editor = Editor {
             focus_handle: cx.focus_handle(),
@@ -170,8 +172,8 @@ impl Editor {
             font_size: px(font_size),
             diagnostics: Vec::new(),
             show_diagnostics: true,
-            unit_table: UnitTable::new(),
-            currency_table: CurrencyTable::new(),
+            unit_table,
+            currency_table,
             line_layouts: Vec::new(),
             last_bounds: None,
             line_height: px(26.0),

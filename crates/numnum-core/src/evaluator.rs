@@ -72,6 +72,16 @@ impl EvalContext {
         }
     }
 
+    /// Create a context with pre-built tables (avoids expensive table rebuild).
+    pub fn with_tables(unit_table: UnitTable, currency_table: CurrencyTable) -> Self {
+        EvalContext {
+            variables: HashMap::new(),
+            aggregation_window: Vec::new(),
+            unit_table,
+            currency_table,
+        }
+    }
+
     /// Replace Unit/Currency tokens with Ident tokens when the unit/currency
     /// canonical name matches a variable in the current context. This allows
     /// users to shadow built-in unit names (e.g. `em = 14; 16 / em`).
