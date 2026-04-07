@@ -230,6 +230,9 @@ impl NumNumApp {
                 editor.font_family = SharedString::from(new_font_family);
             });
 
+            // Re-scroll to cursor with new line height
+            let (line, _) = this.editor.read(cx).cursor_line_col();
+            this.autoscroll_to_line = Some(line);
             cx.notify();
         }).detach();
 
@@ -266,7 +269,7 @@ impl NumNumApp {
         cx.notify();
     }
 
-    fn on_ctrl_scroll(&mut self, event: &ScrollWheelEvent, _window: &mut Window, cx: &mut Context<Self>) {
+    fn on_ctrl_scroll(&mut self, event: &ScrollWheelEvent, window: &mut Window, cx: &mut Context<Self>) {
         if !event.modifiers.control { return; }
         let delta_y = match event.delta {
             ScrollDelta::Lines(pt) => pt.y,
@@ -278,6 +281,7 @@ impl NumNumApp {
         if delta_y.abs() < 0.01 { return; }
         let step = if delta_y > 0.0 { -1.0 } else { 1.0 };
         self.font_size = (self.font_size + step).clamp(8.0, 72.0);
+        window.set_rem_size(px(self.font_size));
         self.editor.update(cx, |editor, _| {
             editor.font_size = px(self.font_size);
         });
@@ -285,6 +289,9 @@ impl NumNumApp {
         self.settings_pane.update(cx, |sp, cx| {
             sp.update_font_size(self.font_size, cx);
         });
+        // Re-scroll to cursor with new line height
+        let (line, _) = self.editor.read(cx).cursor_line_col();
+        self.autoscroll_to_line = Some(line);
         cx.notify();
     }
 
@@ -314,6 +321,11 @@ impl NumNumApp {
 impl Render for NumNumApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         self.viewport_height = window.viewport_size().height;
+        // Sync rem_size when font_size changed (settings observer can't access window)
+        let current_rem: f32 = window.rem_size().into();
+        if (current_rem - self.font_size).abs() > 0.01 {
+            window.set_rem_size(px(self.font_size));
+        }
         let settings_visible = self.settings_pane.read(cx).visible;
 
         // Refocus editor when settings closes
@@ -332,9 +344,8 @@ impl Render for NumNumApp {
 
         // Auto-scroll to cursor using real layout data
         let line_height = window.line_height();
-        let editor_padding = px(self.font_size * 0.75);
-        // Scrollable viewport = window height - status bar (28px) - editor top/bottom padding
-        let scroll_viewport_height = self.viewport_height - px(28.) - editor_padding * 2.0;
+        // Scrollable viewport = window height - status bar (28px)
+        let scroll_viewport_height = self.viewport_height - px(28.);
         if let Some(target_line) = self.autoscroll_to_line.take() {
             let visual_counts = &self.editor.read(cx).line_visual_counts;
             if !visual_counts.is_empty() && scroll_viewport_height > px(0.) {
