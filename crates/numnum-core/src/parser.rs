@@ -206,10 +206,30 @@ impl Parser {
             expr
         };
 
-        // Check for unit
+        // Check for unit, including compound form like "km/h"
         if let TokenKind::Unit(id) = self.peek() {
             let id = *id;
             self.advance();
+            // Check for "/unit" compound (e.g. "km/s", "kg/L")
+            if matches!(self.peek(), TokenKind::Op(BinOp::Div)) {
+                let saved = self.pos;
+                self.advance(); // consume /
+                if let TokenKind::Unit(denom_id) = self.peek() {
+                    let denom_id = *denom_id;
+                    self.advance();
+                    // Build: expr * (1 unit / 1 denom_unit)
+                    // = BinaryOp(Div, WithUnit(expr, id), WithUnit(1, denom_id))
+                    return Ok(Expr::BinaryOp {
+                        op: BinOp::Div,
+                        lhs: Box::new(Expr::WithUnit { expr: Box::new(expr), unit: id }),
+                        rhs: Box::new(Expr::WithUnit {
+                            expr: Box::new(Expr::Number(1.0)),
+                            unit: denom_id,
+                        }),
+                    });
+                }
+                self.pos = saved; // backtrack if not "/ unit"
+            }
             return Ok(Expr::WithUnit { expr: Box::new(expr), unit: id });
         }
 
