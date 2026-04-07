@@ -624,27 +624,18 @@ impl EvalContext {
 
         // Propagate units/currency from either side
         match (lhs, rhs) {
-            // Compound × unit → merge exponents
-            (Value::WithCompoundUnit(_, factors), Value::WithUnit(_, u))
-                if matches!(op, BinOp::Mul | BinOp::Div) =>
-            {
-                let exp: i8 = if matches!(op, BinOp::Div) { -1 } else { 1 };
-                let mut new_factors = factors.clone();
-                merge_unit_factor(&mut new_factors, *u, exp);
-                simplify_compound(result, new_factors)
+            // Compound × unit → too complex, strip to plain number
+            (Value::WithCompoundUnit(..), Value::WithUnit(..))
+            | (Value::WithUnit(..), Value::WithCompoundUnit(..)) => {
+                Ok(Value::Number(result))
             }
-            (Value::WithUnit(_, u), Value::WithCompoundUnit(_, factors))
-                if matches!(op, BinOp::Mul) =>
-            {
-                let mut new_factors = vec![(*u, 1i8)];
-                for &(id, e) in factors.iter() { merge_unit_factor(&mut new_factors, id, e); }
-                simplify_compound(result, new_factors)
-            }
-            // Compound × number → keep compound
-            (Value::WithCompoundUnit(_, factors), _) => {
+            // Compound op number → keep compound (scaling)
+            (Value::WithCompoundUnit(_, factors), Value::Number(_) | Value::NumberRepr(..)) => {
                 Ok(Value::WithCompoundUnit(result, factors.clone()))
             }
-            (_, Value::WithCompoundUnit(_, factors)) if matches!(op, BinOp::Mul) => {
+            (Value::Number(_) | Value::NumberRepr(..), Value::WithCompoundUnit(_, factors))
+                if matches!(op, BinOp::Mul) =>
+            {
                 Ok(Value::WithCompoundUnit(result, factors.clone()))
             }
 
@@ -691,28 +682,6 @@ fn is_valid_compound(num_dim: Dimension, den_dim: Dimension, op: BinOp) -> bool 
             (Length, Length)
         ),
         _ => false,
-    }
-}
-
-/// Merge a unit factor into an existing compound unit list, combining exponents.
-fn merge_unit_factor(factors: &mut Vec<(UnitId, i8)>, unit: UnitId, exp: i8) {
-    for entry in factors.iter_mut() {
-        if entry.0 == unit {
-            entry.1 += exp;
-            return;
-        }
-    }
-    factors.push((unit, exp));
-}
-
-/// Simplify compound unit: remove zero-exponent entries.
-/// If only one factor with exp=1 remains, return WithUnit. If empty, return Number.
-fn simplify_compound(value: f64, mut factors: Vec<(UnitId, i8)>) -> Result<Value, EvalError> {
-    factors.retain(|&(_, exp)| exp != 0);
-    match factors.len() {
-        0 => Ok(Value::Number(value)),
-        1 if factors[0].1 == 1 => Ok(Value::WithUnit(value, factors[0].0)),
-        _ => Ok(Value::WithCompoundUnit(value, factors)),
     }
 }
 
