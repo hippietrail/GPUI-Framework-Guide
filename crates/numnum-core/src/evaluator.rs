@@ -496,7 +496,7 @@ impl EvalContext {
                 // Different dimensions on add/sub => error
                 return Err(EvalError::IncompatibleUnits);
             }
-            // Different dimensions: mul/div produce compound units
+            // Different dimensions: mul/div produce compound units only for valid pairs
             if matches!(op, BinOp::Mul | BinOp::Div) {
                 let result = match op {
                     BinOp::Mul => *ln * *rn,
@@ -506,19 +506,22 @@ impl EvalContext {
                     }
                     _ => unreachable!(),
                 };
-                let exp = if matches!(op, BinOp::Div) { -1i8 } else { 1i8 };
                 // Check if one unit is the squared form of the other (e.g. m² * m → m³)
                 if matches!(op, BinOp::Mul) {
                     if self.unit_table.lookup_squared(*ru) == Some(*lu) {
-                        // LHS is the squared form of RHS: sq_m * m → m³
                         return Ok(Value::WithCompoundUnit(result, vec![(*ru, 3)]));
                     }
                     if self.unit_table.lookup_squared(*lu) == Some(*ru) {
-                        // RHS is the squared form of LHS: m * sq_m → m³
                         return Ok(Value::WithCompoundUnit(result, vec![(*lu, 3)]));
                     }
                 }
-                return Ok(Value::WithCompoundUnit(result, vec![(*lu, 1), (*ru, exp)]));
+                // Only produce compound units for physically valid dimension pairs
+                if is_valid_compound(lu_def.dimension, ru_def.dimension, op) {
+                    let exp = if matches!(op, BinOp::Div) { -1i8 } else { 1i8 };
+                    return Ok(Value::WithCompoundUnit(result, vec![(*lu, 1), (*ru, exp)]));
+                }
+                // Invalid pair: return plain number (strip units)
+                return Ok(Value::Number(result));
             }
         }
 
@@ -657,6 +660,37 @@ impl EvalContext {
 
             _ => Ok(Value::Number(result)),
         }
+    }
+}
+
+/// Valid dimension pairs for compound units.
+/// Only physically meaningful combinations produce compound results.
+fn is_valid_compound(num_dim: Dimension, den_dim: Dimension, op: BinOp) -> bool {
+    use Dimension::*;
+    match op {
+        BinOp::Div => matches!(
+            (num_dim, den_dim),
+            // Speed: length/time (km/h, m/s, mph)
+            (Length, Time) |
+            // Data rate: data/time (B/s, MB/s)
+            (Data, Time) |
+            // Density: mass/volume (kg/L, g/mL)
+            (Mass, Volume) |
+            // Flow rate: volume/time (L/s, gal/min)
+            (Volume, Time) |
+            // Mass flow: mass/time (kg/s, lb/h)
+            (Mass, Time) |
+            // Fuel economy: volume/length (L/km) or length/volume (km/L)
+            (Volume, Length) | (Length, Volume) |
+            // Area rate: area/time (m²/s)
+            (Area, Time)
+        ),
+        BinOp::Mul => matches!(
+            (num_dim, den_dim),
+            // These are handled by lookup_squared already, but as fallback:
+            (Length, Length)
+        ),
+        _ => false,
     }
 }
 
