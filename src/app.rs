@@ -35,6 +35,8 @@ pub struct NumNumApp {
     dark_theme_name: String,
     light_theme_name: String,
     show_diagnostics: bool,
+    viewport_height: Pixels,
+    autoscroll_to_line: Option<usize>,
 }
 
 impl NumNumApp {
@@ -70,15 +72,21 @@ impl NumNumApp {
         let theme_clone = theme.clone();
         let font_for_app = font_family.clone();
 
+        // Build tables once — shared by editor (highlighting/autocomplete) and eval observer
+        let unit_table = numnum_core::types::UnitTable::new();
+        let currency_table = numnum_core::types::CurrencyTable::new();
+
+        let unit_table_for_eval = unit_table.clone();
+        let currency_table_for_eval = currency_table.clone();
+
         let editor = cx.new(|cx| {
-            let mut ed = Editor::new(cx, theme_clone, font_family, font_size, None);
+            let mut ed = Editor::new(cx, theme_clone, font_family, font_size, None,
+                unit_table, currency_table);
             ed.show_diagnostics = show_diagnostics;
             ed
         });
 
-        // Create scroll handle shared between observer and render
         let scroll_handle = ScrollHandle::new();
-        let scroll_handle_for_eval = scroll_handle.clone();
         let last_scroll_line = std::cell::Cell::new(0usize);
 
         // Observe editor for content changes: evaluate, update results + diagnostics
@@ -90,7 +98,10 @@ impl NumNumApp {
             let (line, col) = editor_for_eval.read(cx).cursor_line_col();
             let precision = this.precision;
 
-            let mut eval_ctx = EvalContext::new();
+            let mut eval_ctx = EvalContext::with_tables(
+                unit_table_for_eval.clone(),
+                currency_table_for_eval.clone(),
+            );
             if let Ok(rates) = live_rates.lock() {
                 rates::apply_rates(&mut eval_ctx.currency_table, &rates);
             }
@@ -162,44 +173,10 @@ impl NumNumApp {
                 bar.set_cursor(line, col, cx);
             });
 
-            // Auto-scroll to keep cursor visible, but only when cursor line changes
+            // Request auto-scroll — actual scroll happens in render() with real layout data
             if line != last_scroll_line.get() {
                 last_scroll_line.set(line);
-                let approx_line_height = px(font_size * 1.6);
-
-                // Compute cursor_y using visual line counts for accuracy with wrapping
-                let visual_counts = &editor_for_eval.read(cx).line_visual_counts;
-                let cursor_y: Pixels = visual_counts.iter().take(line)
-                    .map(|&c| approx_line_height * c as f32)
-                    .sum::<Pixels>();
-
-                let current_offset = scroll_handle_for_eval.offset();
-                let viewport_top = -current_offset.y;
-                // Infer viewport height from scroll handle bounds
-                let max_offset = scroll_handle_for_eval.max_offset();
-                let max_y: f32 = max_offset.y.into();
-                // max_offset.y is the most negative the scroll can go
-                // viewport_height ≈ content_height + max_y (since max_y is negative)
-                let total_visual: usize = if visual_counts.is_empty() {
-                    editor_for_eval.read(cx).content().split('\n').count()
-                } else {
-                    visual_counts.iter().sum()
-                };
-                let content_h: f32 = (approx_line_height * (total_visual as f32 + 4.0)).into();
-                let viewport_height = if max_y < 0.0 {
-                    px(content_h + max_y) // content - scrollable range = viewport
-                } else {
-                    px(content_h.min(600.0)) // fallback
-                };
-                let viewport_bottom = viewport_top + viewport_height;
-
-                if cursor_y + approx_line_height > viewport_bottom {
-                    let new_y = -(cursor_y - viewport_height + approx_line_height * 3.0);
-                    scroll_handle_for_eval.set_offset(point(px(0.), new_y));
-                } else if cursor_y < viewport_top {
-                    let new_y = -cursor_y + approx_line_height;
-                    scroll_handle_for_eval.set_offset(point(px(0.), new_y));
-                }
+                this.autoscroll_to_line = Some(line);
             }
         })
         .detach();
@@ -273,6 +250,8 @@ impl NumNumApp {
             dark_theme_name: settings.appearance.dark_theme.clone(),
             light_theme_name: settings.appearance.light_theme.clone(),
             show_diagnostics,
+            viewport_height: px(0.),
+            autoscroll_to_line: None,
         }
     }
 }
@@ -334,6 +313,7 @@ impl NumNumApp {
 
 impl Render for NumNumApp {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.viewport_height = window.viewport_size().height;
         let settings_visible = self.settings_pane.read(cx).visible;
 
         // Refocus editor when settings closes
@@ -350,6 +330,32 @@ impl Render for NumNumApp {
         let divider_color = self.theme.divider;
         let is_dragging = self.is_dragging_divider;
 
+        // Auto-scroll to cursor using real layout data
+        let line_height = window.line_height();
+        let editor_padding = px(self.font_size * 0.75);
+        // Scrollable viewport = window height - status bar (28px) - editor top/bottom padding
+        let scroll_viewport_height = self.viewport_height - px(28.) - editor_padding * 2.0;
+        if let Some(target_line) = self.autoscroll_to_line.take() {
+            let visual_counts = &self.editor.read(cx).line_visual_counts;
+            if !visual_counts.is_empty() && scroll_viewport_height > px(0.) {
+                let cursor_y: Pixels = visual_counts.iter().take(target_line)
+                    .map(|&c| line_height * c as f32)
+                    .sum();
+
+                let current_offset = self.scroll_handle.offset();
+                let viewport_top = -current_offset.y;
+                let viewport_bottom = viewport_top + scroll_viewport_height;
+
+                if cursor_y + line_height > viewport_bottom {
+                    let new_y = -(cursor_y - scroll_viewport_height + line_height * 3.0);
+                    self.scroll_handle.set_offset(point(px(0.), new_y));
+                } else if cursor_y < viewport_top {
+                    let new_y = -cursor_y + line_height;
+                    self.scroll_handle.set_offset(point(px(0.), new_y));
+                }
+            }
+        }
+
         // Compute content height from editor visual line counts + diagnostics
         let editor = self.editor.read(cx);
         let total_visual: usize = if editor.line_visual_counts.is_empty() {
@@ -358,7 +364,6 @@ impl Render for NumNumApp {
             editor.line_visual_counts.iter().sum()
         };
         let diag_count = editor.diagnostics.iter().filter(|d| d.is_some()).count();
-        let line_height = window.line_height();
         let diag_line_height = line_height * 0.8; // proportional to line height
         let content_height = line_height * (total_visual as f32) + diag_line_height * (diag_count as f32) + line_height * 4.0; // padding at bottom
 
