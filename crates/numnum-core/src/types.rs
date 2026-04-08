@@ -141,6 +141,11 @@ impl UnitTable {
             to_base,
             offset,
         });
+        // Always register the display symbol as a variant (e.g. "W", "V", "Hz")
+        let display_lower = display.to_lowercase();
+        if !display_lower.is_empty() {
+            self.name_to_id.insert(display_lower, id);
+        }
         for v in variants {
             self.name_to_id.insert(v.to_lowercase(), id);
         }
