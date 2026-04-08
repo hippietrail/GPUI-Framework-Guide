@@ -21,7 +21,7 @@ warn()  { printf "${YELLOW}[warn]${NC} %s\n" "$1"; }
 err()   { printf "${RED}[err]${NC}  %s\n" "$1"; }
 
 ask() {
-    printf "${CYAN}[?]${NC} %s " "$1"
+    printf "${CYAN}[?]${NC} %s " "$1" >&2
     read -r answer
     echo "$answer"
 }
