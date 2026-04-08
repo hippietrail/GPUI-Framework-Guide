@@ -147,6 +147,12 @@ sudo pkg install cmake llvm git alsa-lib libX11 sqlite3
 ./build_install_linux_bsd.sh
 ```
 
+Set this in your shell profile to avoid GPUI performance issues on FreeBSD:
+
+```sh
+export RUST_LIB_BACKTRACE=0
+```
+
 The install script builds the release binary, copies it to `~/.local/bin/`, sets up the desktop entry and icon, and optionally configures Hyprland or Niri window rules.
 
 ### macOS
