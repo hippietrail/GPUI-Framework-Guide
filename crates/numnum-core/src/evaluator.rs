@@ -715,7 +715,13 @@ fn is_valid_compound(num_dim: Dimension, den_dim: Dimension, op: BinOp) -> bool 
             // Energy/time = power: J/s = W
             (Energy, Time) |
             // Energy/power = time: J/W = s
-            (Energy, Power)
+            (Energy, Power) |
+            // Power/time: W/h (rate of power change)
+            (Power, Time) |
+            // Energy/mass, energy/volume (specific energy, energy density)
+            (Energy, Mass) | (Energy, Volume) |
+            // Frequency/time (not common but valid)
+            (Frequency, Time)
         ),
         BinOp::Mul => matches!(
             (num_dim, den_dim),
