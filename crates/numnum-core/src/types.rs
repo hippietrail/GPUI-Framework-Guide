@@ -487,6 +487,49 @@ impl UnitTable {
         self.squared_cache.get(&unit_id).copied()
     }
 
+    /// Find a single unit that equals the product of two units from different dimensions.
+    /// E.g. volt × ampere → watt, kilowatt × hour → kilowatt_hour.
+    /// Converts both to base units, multiplies, finds matching unit in target dimension.
+    pub fn lookup_product(&self, a: UnitId, b: UnitId, op: BinOp) -> Option<UnitId> {
+        let a_def = self.get(a)?;
+        let b_def = self.get(b)?;
+        // Determine target dimension from the pair
+        let target_dim = match op {
+            BinOp::Mul => match (a_def.dimension, b_def.dimension) {
+                (Dimension::Voltage, Dimension::Current)
+                | (Dimension::Current, Dimension::Voltage) => Some(Dimension::Power),
+                (Dimension::Power, Dimension::Time)
+                | (Dimension::Time, Dimension::Power) => Some(Dimension::Energy),
+                _ => None,
+            },
+            BinOp::Div => match (a_def.dimension, b_def.dimension) {
+                (Dimension::Energy, Dimension::Time) => Some(Dimension::Power),
+                (Dimension::Power, Dimension::Current) => Some(Dimension::Voltage),
+                (Dimension::Power, Dimension::Voltage) => Some(Dimension::Current),
+                (Dimension::Voltage, Dimension::Current) => Some(Dimension::Resistance),
+                _ => None,
+            },
+            _ => None,
+        }?;
+
+        // Compute the product/quotient of base conversion factors
+        let target_to_base = match op {
+            BinOp::Mul => a_def.to_base * b_def.to_base,
+            BinOp::Div => a_def.to_base / b_def.to_base,
+            _ => return None,
+        };
+
+        // Find a unit in the target dimension with matching to_base
+        for (i, u) in self.units.iter().enumerate() {
+            if u.dimension == target_dim
+                && (u.to_base - target_to_base).abs() < 1e-12_f64.max(target_to_base.abs() * 1e-6)
+            {
+                return Some(UnitId(i as u16));
+            }
+        }
+        None
+    }
+
     pub fn convert(&self, value: f64, from: UnitId, to: UnitId) -> Option<f64> {
         let from_def = self.get(from)?;
         let to_def = self.get(to)?;

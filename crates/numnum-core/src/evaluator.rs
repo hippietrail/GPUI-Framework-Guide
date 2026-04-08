@@ -532,6 +532,10 @@ impl EvalContext {
                 }
                 // Only produce compound units for physically valid dimension pairs
                 if is_valid_compound(lu_def.dimension, ru_def.dimension, op) {
+                    // Check if the product maps to a known single unit (e.g. V×A→W, kW×h→kWh)
+                    if let Some(product_id) = self.unit_table.lookup_product(*lu, *ru, op) {
+                        return Ok(Value::WithUnit(result, product_id));
+                    }
                     let exp = if matches!(op, BinOp::Div) { -1i8 } else { 1i8 };
                     return Ok(Value::WithCompoundUnit(result, vec![(*lu, 1), (*ru, exp)]));
                 }
