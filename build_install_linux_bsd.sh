@@ -97,7 +97,7 @@ case "$wm_choice" in
                     elif grep -q "numnum" "$HYPR_CONF" 2>/dev/null; then
                         ok "NumNum is already integrated with Hyprland"
                     else
-                        printf "\n# NumNum calculator\nwindowrule = float on, match:class numnum\nwindowrule = border_size 0, match:class numnum\n" >> "$HYPR_CONF"
+                        printf "\n# NumNum calculator\nwindowrule = float on, match:class numnum\nwindowrule = pin on, match:class numnum\nwindowrule = border_size 0, match:class numnum\n" >> "$HYPR_CONF"
                         ok "Hyprland rules added to $HYPR_CONF"
                     fi
                 else
