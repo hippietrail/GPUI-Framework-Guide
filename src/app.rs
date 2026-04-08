@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use gpui::{
     App, Context, CursorStyle, Entity, Focusable, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Pixels, Render, ScrollDelta, ScrollHandle, ScrollWheelEvent, SharedString,
-    Window, WindowControlArea, div, point, prelude::*, px,
+    Window, div, point, prelude::*, px,
 };
 
 use gpui::relative;
@@ -38,6 +38,7 @@ pub struct NumNumApp {
     viewport_height: Pixels,
     autoscroll_to_line: Option<usize>,
     title_bar: String,
+    titlebar_should_move: bool,
 }
 
 impl NumNumApp {
@@ -257,6 +258,7 @@ impl NumNumApp {
             viewport_height: px(0.),
             autoscroll_to_line: None,
             title_bar: settings.window.title_bar.clone(),
+            titlebar_should_move: false,
         }
     }
 }
@@ -396,75 +398,107 @@ impl Render for NumNumApp {
             .font_family(self.font_family.clone())
             .text_size(px(self.font_size))
             .on_scroll_wheel(cx.listener(Self::on_ctrl_scroll))
-            // Custom "numnum" title bar
+            // Custom "numnum" title bar (follows Zed's pattern:
+            // explicit start_window_move on mouse_move, explicit button click handlers)
             .when(self.title_bar == "numnum", |el| {
-                let close_color = self.theme.error;
-                let minimize_color = self.theme.syn_variable;
-                let maximize_color = self.theme.result;
                 let title_color = self.theme.text_muted;
                 let bar_bg = self.theme.status_bar;
+                let is_macos = cfg!(target_os = "macos");
 
-                el.child(
-                    div()
-                        .id("numnum-titlebar")
-                        .w_full()
-                        .h(px(32.))
-                        .flex()
-                        .flex_row()
-                        .items_center()
-                        .bg(bar_bg)
-                        .window_control_area(WindowControlArea::Drag)
-                        // Traffic light buttons (left side)
-                        .child(
-                            div()
-                                .flex()
-                                .flex_row()
-                                .gap(px(8.))
-                                .pl(px(12.))
-                                .child(
-                                    div()
-                                        .id("tb-close")
-                                        .size(px(12.))
-                                        .rounded_full()
-                                        .bg(close_color)
-                                        .hover(|s| s.bg(close_color))
-                                        .cursor(CursorStyle::PointingHand)
-                                        .window_control_area(WindowControlArea::Close),
-                                )
-                                .child(
-                                    div()
-                                        .id("tb-min")
-                                        .size(px(12.))
-                                        .rounded_full()
-                                        .bg(minimize_color)
-                                        .hover(|s| s.bg(minimize_color))
-                                        .cursor(CursorStyle::PointingHand)
-                                        .window_control_area(WindowControlArea::Min),
-                                )
-                                .child(
-                                    div()
-                                        .id("tb-max")
-                                        .size(px(12.))
-                                        .rounded_full()
-                                        .bg(maximize_color)
-                                        .hover(|s| s.bg(maximize_color))
-                                        .cursor(CursorStyle::PointingHand)
-                                        .window_control_area(WindowControlArea::Max),
-                                ),
-                        )
-                        // Centered title
-                        .child(
-                            div()
-                                .flex_1()
-                                .flex()
-                                .justify_center()
-                                .text_size(px(13.))
-                                .text_color(title_color)
-                                .child("NumNum"),
-                        )
-                        // Right spacer (same width as traffic lights for centering)
-                        .child(div().w(px(68.))),
-                )
+                let mut bar = div()
+                    .id("numnum-titlebar")
+                    .w_full()
+                    .h(px(32.))
+                    .flex()
+                    .flex_row()
+                    .items_center()
+                    .bg(bar_bg)
+                    // Zed's drag pattern: on_mouse_down sets flag, on_mouse_move calls start_window_move
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _: &MouseDownEvent, _window, _cx| {
+                            this.titlebar_should_move = true;
+                        }),
+                    )
+                    .on_mouse_up(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _window, _cx| {
+                            this.titlebar_should_move = false;
+                        }),
+                    )
+                    .on_mouse_move(cx.listener(|this, _, window, _cx| {
+                        if this.titlebar_should_move {
+                            this.titlebar_should_move = false;
+                            window.start_window_move();
+                        }
+                    }));
+
+                if is_macos {
+                    // macOS: system traffic lights via TitlebarOptions, just pad left
+                    bar = bar.child(div().w(px(72.)));
+                } else {
+                    // Linux/FreeBSD: our own traffic light circles with explicit click handlers
+                    let close_color = self.theme.error;
+                    let minimize_color = self.theme.syn_variable;
+                    let maximize_color = self.theme.result;
+                    bar = bar.child(
+                        div()
+                            .flex()
+                            .flex_row()
+                            .gap(px(8.))
+                            .pl(px(12.))
+                            .child(
+                                div()
+                                    .id("tb-close")
+                                    .size(px(12.))
+                                    .rounded_full()
+                                    .bg(close_color)
+                                    .cursor(CursorStyle::PointingHand)
+                                    .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                                        cx.stop_propagation();
+                                        window.remove_window();
+                                    }),
+                            )
+                            .child(
+                                div()
+                                    .id("tb-min")
+                                    .size(px(12.))
+                                    .rounded_full()
+                                    .bg(minimize_color)
+                                    .cursor(CursorStyle::PointingHand)
+                                    .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                                        cx.stop_propagation();
+                                        window.minimize_window();
+                                    }),
+                            )
+                            .child(
+                                div()
+                                    .id("tb-max")
+                                    .size(px(12.))
+                                    .rounded_full()
+                                    .bg(maximize_color)
+                                    .cursor(CursorStyle::PointingHand)
+                                    .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                                        cx.stop_propagation();
+                                        window.zoom_window();
+                                    }),
+                            ),
+                    );
+                }
+
+                bar = bar
+                    .child(
+                        div()
+                            .flex_1()
+                            .flex()
+                            .justify_center()
+                            .text_size(px(13.))
+                            .text_color(title_color)
+                            .child("NumNum"),
+                    )
+                    .child(div().w(px(68.)));
+
+                el.child(bar)
             })
             // Only attach divider drag handlers when calculator is showing
             .when(!settings_visible, |el| {

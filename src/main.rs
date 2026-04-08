@@ -6,7 +6,7 @@ mod settings_pane;
 mod status_bar;
 mod theme;
 
-use gpui::{App, Bounds, Focusable, KeyBinding, WindowAppearance, WindowBounds, WindowDecorations, WindowOptions, prelude::*, px, size};
+use gpui::{App, Bounds, Focusable, KeyBinding, Point, SharedString, TitlebarOptions, WindowAppearance, WindowBounds, WindowDecorations, WindowOptions, prelude::*, px, size};
 use gpui_platform::application;
 use numnum_core::{Settings, ThemeFile};
 
@@ -108,7 +108,7 @@ fn main() {
         let light_theme_name = settings.appearance.light_theme.clone();
         let _pre_window_theme = theme.clone();
 
-        let custom_decorations = matches!(
+        let custom_titlebar = matches!(
             settings.window.title_bar.as_str(), "none" | "numnum"
         );
         let _window_handle = cx
@@ -117,7 +117,22 @@ fn main() {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     focus: true,
                     window_min_size: Some(size(px(480.0), px(360.0))),
-                    window_decorations: if custom_decorations {
+                    // macOS: transparent titlebar keeps system traffic lights
+                    titlebar: if custom_titlebar {
+                        Some(TitlebarOptions {
+                            title: Some(SharedString::from("NumNum")),
+                            appears_transparent: true,
+                            traffic_light_position: Some(Point::new(px(8.), px(8.))),
+                        })
+                    } else {
+                        Some(TitlebarOptions {
+                            title: Some(SharedString::from("NumNum")),
+                            appears_transparent: false,
+                            traffic_light_position: None,
+                        })
+                    },
+                    // Linux/FreeBSD: client-side decorations removes system chrome
+                    window_decorations: if custom_titlebar {
                         Some(WindowDecorations::Client)
                     } else {
                         None

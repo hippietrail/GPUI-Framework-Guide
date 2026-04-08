@@ -521,7 +521,7 @@ impl Settings {
             window: WindowSettings {
                 width: get_f32("window", "width", 680.0),
                 height: get_f32("window", "height", 620.0),
-                title_bar: get("window", "title_bar", "system"),
+                title_bar: get("window", "title_bar", "numnum"),
             },
         }
     }
@@ -602,7 +602,7 @@ impl Default for Settings {
             window: WindowSettings {
                 width: 680.0,
                 height: 620.0,
-                title_bar: "system".to_string(),
+                title_bar: "numnum".to_string(),
             },
         }
     }
