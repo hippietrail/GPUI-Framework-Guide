@@ -90,6 +90,12 @@ Or grab it from the [releases page](https://github.com/subframe7536/maple-font/r
 - A C/C++ compiler
 - CMake
 
+Install Rust via [rustup](https://rustup.rs) if you don't have it:
+
+```sh
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+```
+
 Plus platform-specific libraries:
 
 ### Linux (Debian/Ubuntu)
