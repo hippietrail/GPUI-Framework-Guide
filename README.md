@@ -64,6 +64,24 @@ Drop a `.toml` file in `~/.config/numnum/themes/` to add your own. Dark, light, 
 
 Optional custom titlebar with macOS-style traffic light buttons, or use your system's native one, or go with no titlebar at all.
 
+## Font
+
+NumNum looks best with [Maple Mono NF](https://github.com/subframe7536/maple-font) (the default). Install it before running:
+
+```sh
+# macOS / Linux (Homebrew)
+brew install --cask font-maple-mono-nf
+
+# Arch Linux
+paru -S ttf-maplemono-nf-unhinted
+
+# Windows (Scoop)
+scoop bucket add nerd-fonts
+scoop install Maple-Mono-NF
+```
+
+Or grab it from the [releases page](https://github.com/subframe7536/maple-font/releases). Any monospace font works, but Maple Mono NF is what NumNum is designed around. You can change the font in settings.
+
 ## Building from source
 
 ### You'll need
