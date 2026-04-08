@@ -41,12 +41,18 @@ pub struct Lexer<'a> {
     pos: usize,
     unit_table: &'a UnitTable,
     currency_table: &'a CurrencyTable,
+    number_format: NumberFormat,
 }
 
 impl<'a> Lexer<'a> {
     pub fn new(input: &str, unit_table: &'a UnitTable, currency_table: &'a CurrencyTable) -> Self {
         let processed_input = strip_quotes(input);
-        Lexer { processed_input, pos: 0, unit_table, currency_table }
+        Lexer { processed_input, pos: 0, unit_table, currency_table, number_format: NumberFormat::US }
+    }
+
+    pub fn with_number_format(mut self, fmt: NumberFormat) -> Self {
+        self.number_format = fmt;
+        self
     }
 
     pub fn tokenize(&mut self) -> Vec<Token> {
@@ -279,7 +285,17 @@ impl<'a> Lexer<'a> {
                 self.pos += 1;
             }
         }
-        let num_str: String = self.processed_input[start..self.pos].chars().filter(|c| *c != ',').collect();
+        let raw = &self.processed_input[start..self.pos];
+        let num_str: String = match self.number_format {
+            NumberFormat::European => {
+                // European: dots are thousands separators, comma is decimal
+                raw.chars().filter(|c| *c != '.').map(|c| if c == ',' { '.' } else { c }).collect()
+            }
+            _ => {
+                // US/Indian: commas are thousands separators, dot is decimal
+                raw.chars().filter(|c| *c != ',').collect()
+            }
+        };
         let val = num_str.parse::<f64>().unwrap_or(0.0);
 
         // Check for immediate scale suffix (no space): 2k, 3M

@@ -8,7 +8,7 @@ use gpui::{
     WrappedLine, actions, anchored, deferred, div, fill, point, prelude::*, px, relative, size,
 };
 use numnum_core::lexer::{Lexer, TokenKind};
-use numnum_core::types::{CurrencyTable, UnitTable};
+use numnum_core::types::{CurrencyTable, NumberFormat, UnitTable};
 use unicode_segmentation::*;
 
 use std::collections::HashMap;
@@ -145,6 +145,7 @@ pub struct Editor {
     // Autocomplete
     completion: CompletionState,
     pub known_variables: Vec<String>,
+    pub number_format: NumberFormat,
 }
 
 impl Editor {
@@ -189,6 +190,7 @@ impl Editor {
                 selected_index: 0,
             },
             known_variables: Vec::new(),
+            number_format: NumberFormat::US,
         };
         editor.rebuild_completion_candidates();
         editor.schedule_blink(cx);
@@ -835,7 +837,8 @@ impl Editor {
             }];
         }
 
-        let mut lexer = Lexer::new(line, &self.unit_table, &self.currency_table);
+        let mut lexer = Lexer::new(line, &self.unit_table, &self.currency_table)
+            .with_number_format(self.number_format);
         let tokens = lexer.tokenize();
 
         let mut runs = Vec::new();

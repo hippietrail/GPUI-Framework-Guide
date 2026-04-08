@@ -9,6 +9,7 @@ use gpui::{
 
 use gpui::relative;
 use numnum_core::format::{format_value_with_precision, format_value_full_precision};
+use numnum_core::types::NumberFormat;
 use numnum_core::{EvalContext, Settings, Value};
 
 use crate::editor::Editor;
@@ -39,6 +40,7 @@ pub struct NumNumApp {
     autoscroll_to_line: Option<usize>,
     title_bar: String,
     titlebar_should_move: bool,
+    number_format: NumberFormat,
 }
 
 impl NumNumApp {
@@ -104,6 +106,7 @@ impl NumNumApp {
                 unit_table_for_eval.clone(),
                 currency_table_for_eval.clone(),
             );
+            eval_ctx.set_number_format(this.number_format);
             if let Ok(rates) = live_rates.lock() {
                 rates::apply_rates(&mut eval_ctx.currency_table, &rates);
             }
@@ -120,11 +123,12 @@ impl NumNumApp {
                         diagnostics.push(None);
                     }
                     Ok(val) => {
+                        let fmt = this.number_format;
                         let formatted = format_value_with_precision(
-                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table, precision,
+                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table, precision, fmt,
                         );
                         let full_precision = format_value_full_precision(
-                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table,
+                            &val, &eval_ctx.unit_table, &eval_ctx.currency_table, fmt,
                         );
                         if let Some(n) = val.as_number() {
                             running_total += n;
@@ -150,7 +154,7 @@ impl NumNumApp {
                     Value::WithCurrency(_, c) => Value::WithCurrency(running_total, *c),
                     _ => Value::Number(running_total),
                 };
-                format_value_with_precision(&total_val, &eval_ctx.unit_table, &eval_ctx.currency_table, precision)
+                format_value_with_precision(&total_val, &eval_ctx.unit_table, &eval_ctx.currency_table, precision, this.number_format)
             };
 
             // Update editor diagnostics and variables (for inlay rendering + autocomplete)
@@ -193,6 +197,7 @@ impl NumNumApp {
             this.font_size = new_settings.editor.font_size;
             this.font_family = SharedString::from(new_settings.editor.font_family.clone());
             this.show_diagnostics = new_settings.editor.show_diagnostics;
+            this.number_format = NumberFormat::from_str(&new_settings.editor.number_format);
 
             // Reload theme if appearance mode or theme selection changed
             let new_mode = new_settings.appearance.mode.clone();
@@ -227,9 +232,11 @@ impl NumNumApp {
             // Propagate font changes to editor
             let new_font_size = new_settings.editor.font_size;
             let new_font_family = new_settings.editor.font_family.clone();
+            let new_num_fmt = this.number_format;
             this.editor.update(cx, |editor, _| {
                 editor.font_size = px(new_font_size);
                 editor.font_family = SharedString::from(new_font_family);
+                editor.number_format = new_num_fmt;
             });
 
             // Re-scroll to cursor with new line height
@@ -259,6 +266,7 @@ impl NumNumApp {
             autoscroll_to_line: None,
             title_bar: settings.window.title_bar.clone(),
             titlebar_should_move: false,
+            number_format: NumberFormat::from_str(&settings.editor.number_format),
         }
     }
 }

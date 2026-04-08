@@ -115,6 +115,17 @@ impl SettingsPane {
         cx.notify();
     }
 
+    fn cycle_number_format(&mut self, cx: &mut Context<Self>) {
+        let next = match self.settings.editor.number_format.as_str() {
+            "us" => "indian",
+            "indian" => "european",
+            _ => "us",
+        };
+        self.settings.editor.number_format = next.to_string();
+        self.settings.save();
+        cx.notify();
+    }
+
     fn cycle_title_bar(&mut self, cx: &mut Context<Self>) {
         let next = match self.settings.window.title_bar.as_str() {
             "system" => "numnum",
@@ -236,6 +247,11 @@ impl Render for SettingsPane {
             _ => "Auto",
         };
         let show_diag_val = if settings.editor.show_diagnostics { "Yes" } else { "No" };
+        let number_format_val = match settings.editor.number_format.as_str() {
+            "indian" => "Indian",
+            "european" => "European",
+            _ => "US",
+        };
         let title_bar_val = match settings.window.title_bar.as_str() {
             "numnum" => "NumNum",
             "none" => "None",
@@ -658,6 +674,25 @@ impl Render for SettingsPane {
                                     MouseButton::Left,
                                     cx.listener(|this, _: &MouseUpEvent, _window, cx| {
                                         this.toggle_show_diagnostics(cx);
+                                    }),
+                                ),
+                        ),
+                    )
+                    // Number Format (cycle US → Indian → European)
+                    .child(
+                        setting_row(
+                            &theme,
+                            "Number Format",
+                            div()
+                                .id("numfmt-cycle")
+                                .cursor_pointer()
+                                .text_color(theme.text)
+                                .hover(|s| s.text_color(theme.text_muted))
+                                .child(format!("{} \u{25BE}", number_format_val))
+                                .on_mouse_up(
+                                    MouseButton::Left,
+                                    cx.listener(|this, _: &MouseUpEvent, _window, cx| {
+                                        this.cycle_number_format(cx);
                                     }),
                                 ),
                         ),

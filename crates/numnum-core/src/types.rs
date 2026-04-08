@@ -1,6 +1,23 @@
 use std::collections::HashMap;
 use std::fmt;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NumberFormat {
+    US,       // 1,234,567.89
+    Indian,   // 12,34,567.89
+    European, // 1.234.567,89
+}
+
+impl NumberFormat {
+    pub fn from_str(s: &str) -> Self {
+        match s {
+            "indian" => Self::Indian,
+            "european" => Self::European,
+            _ => Self::US,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct UnitId(pub u16);
 
@@ -692,11 +709,11 @@ impl Value {
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Value::Number(n) => write!(f, "{}", crate::format::format_number(*n, 2)),
+            Value::Number(n) => write!(f, "{}", crate::format::format_number(*n, 2, NumberFormat::US)),
             Value::NumberRepr(n, repr) => write!(f, "{}", crate::format::format_number_repr(*n, *repr)),
-            Value::WithUnit(n, _) | Value::WithCompoundUnit(n, _) => write!(f, "{}", crate::format::format_number(*n, 2)),
-            Value::WithCurrency(n, _) => write!(f, "{}", crate::format::format_number(*n, 2)),
-            Value::Percent(n) => write!(f, "{} %", crate::format::format_number(*n * 100.0, 2)),
+            Value::WithUnit(n, _) | Value::WithCompoundUnit(n, _) => write!(f, "{}", crate::format::format_number(*n, 2, NumberFormat::US)),
+            Value::WithCurrency(n, _) => write!(f, "{}", crate::format::format_number(*n, 2, NumberFormat::US)),
+            Value::Percent(n) => write!(f, "{} %", crate::format::format_number(*n * 100.0, 2, NumberFormat::US)),
             Value::None => Ok(()),
         }
     }

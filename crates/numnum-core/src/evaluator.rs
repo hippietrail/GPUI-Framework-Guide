@@ -54,6 +54,7 @@ pub struct EvalContext {
     pub aggregation_window: Vec<Value>,
     pub unit_table: UnitTable,
     pub currency_table: CurrencyTable,
+    pub number_format: NumberFormat,
 }
 
 impl Default for EvalContext {
@@ -69,6 +70,7 @@ impl EvalContext {
             aggregation_window: Vec::new(),
             unit_table: UnitTable::new(),
             currency_table: CurrencyTable::new(),
+            number_format: NumberFormat::US,
         }
     }
 
@@ -79,7 +81,12 @@ impl EvalContext {
             aggregation_window: Vec::new(),
             unit_table,
             currency_table,
+            number_format: NumberFormat::US,
         }
+    }
+
+    pub fn set_number_format(&mut self, fmt: NumberFormat) {
+        self.number_format = fmt;
     }
 
     /// Replace Unit/Currency tokens with Ident tokens when the unit/currency
@@ -122,7 +129,8 @@ impl EvalContext {
             return Ok(Value::None);
         }
 
-        let mut lexer = Lexer::new(trimmed, &self.unit_table, &self.currency_table);
+        let mut lexer = Lexer::new(trimmed, &self.unit_table, &self.currency_table)
+            .with_number_format(self.number_format);
         let tokens = lexer.tokenize();
 
         // Comment or header

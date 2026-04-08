@@ -78,6 +78,7 @@ pub struct EditorSettings {
     pub copy_full_precision: bool,
     pub precision: u32,
     pub show_diagnostics: bool,
+    pub number_format: String, // "us", "indian", "european"
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -517,6 +518,7 @@ impl Settings {
                 copy_full_precision: get_bool("editor.clipboard", "full_precision", true),
                 precision: get_u32("editor", "precision", 2),
                 show_diagnostics: get_bool("editor", "show_diagnostics", true),
+                number_format: get("editor", "number_format", "us"),
             },
             window: WindowSettings {
                 width: get_f32("window", "width", 680.0),
@@ -548,6 +550,7 @@ line_height = {line_height}
 tab_size = {tab_size}
 precision = {precision}
 show_diagnostics = {show_diagnostics}
+number_format = "{number_format}"
 
 [editor.split]
 default_ratio = {split_ratio}
@@ -570,6 +573,7 @@ title_bar = "{win_title_bar}"
             tab_size = e.tab_size,
             precision = e.precision,
             show_diagnostics = e.show_diagnostics,
+            number_format = e.number_format,
             split_ratio = e.split_ratio,
             full_precision = e.copy_full_precision,
             win_width = self.window.width,
@@ -598,6 +602,7 @@ impl Default for Settings {
                 copy_full_precision: true,
                 precision: 2,
                 show_diagnostics: true,
+                number_format: "us".to_string(),
             },
             window: WindowSettings {
                 width: 680.0,
