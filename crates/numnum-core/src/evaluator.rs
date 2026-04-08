@@ -592,6 +592,35 @@ impl EvalContext {
             }
         }
 
+        // Percent in multiplication/division: use fraction (0.05) not display value (5)
+        // e.g. 45000 * 5% = 45000 * 0.05 = 2250
+        if matches!(op, BinOp::Mul | BinOp::Div) {
+            if let Value::Percent(p) = &rhs {
+                let ln = lhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Left operand must be numeric".to_string()))?;
+                let result = match op {
+                    BinOp::Mul => ln * p,
+                    BinOp::Div => { if *p == 0.0 { return Err(EvalError::DivisionByZero); } ln / p }
+                    _ => unreachable!(),
+                };
+                return match &lhs {
+                    Value::WithUnit(_, u) => Ok(Value::WithUnit(result, *u)),
+                    Value::WithCurrency(_, c) => Ok(Value::WithCurrency(result, *c)),
+                    _ => Ok(Value::Number(result)),
+                };
+            }
+            if let Value::Percent(p) = &lhs {
+                if matches!(op, BinOp::Mul) {
+                    let rn = rhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Right operand must be numeric".to_string()))?;
+                    let result = p * rn;
+                    return match &rhs {
+                        Value::WithUnit(_, u) => Ok(Value::WithUnit(result, *u)),
+                        Value::WithCurrency(_, c) => Ok(Value::WithCurrency(result, *c)),
+                        _ => Ok(Value::Number(result)),
+                    };
+                }
+            }
+        }
+
         let ln = lhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Left operand must be numeric".to_string()))?;
         let rn = rhs.as_number().ok_or_else(|| EvalError::TypeMismatch("Right operand must be numeric".to_string()))?;
 
