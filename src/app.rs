@@ -402,7 +402,7 @@ impl Render for NumNumApp {
             // explicit start_window_move on mouse_move, explicit button click handlers)
             .when(self.title_bar == "numnum", |el| {
                 let title_color = self.theme.text_muted;
-                let bar_bg = self.theme.status_bar;
+                let bar_bg = self.theme.editor_background;
                 let is_macos = cfg!(target_os = "macos");
 
                 let mut bar = div()
