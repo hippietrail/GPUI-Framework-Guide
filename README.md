@@ -6,6 +6,8 @@ No buttons, no keypad. Just a blank page that understands numbers, units, curren
 
 Open source. Cross-platform. GPU-accelerated.
 
+![NumNum](assets/screenshot.png)
+
 ## How it works
 
 ```
