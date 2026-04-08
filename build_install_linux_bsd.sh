@@ -85,52 +85,30 @@ printf "  3) Neither / skip\n"
 wm_choice=$(ask "Which window manager? [1/2/3]")
 
 case "$wm_choice" in
-    1)
-        # Hyprland
-        HYPR_CONF="$HOME/.config/hypr/hyprland.conf"
-        if [ ! -f "$HYPR_CONF" ]; then
-            warn "Hyprland config not found at $HYPR_CONF, skipping"
-        elif grep -q "numnum" "$HYPR_CONF" 2>/dev/null; then
-            ok "Hyprland already has numnum rules, skipping"
-        else
-            printf "\n"
-            info "Will add to $HYPR_CONF:"
-            printf "  ${YELLOW}windowrule = float on, match:class numnum${NC}\n"
-            printf "  ${YELLOW}windowrule = border_size 0, match:class numnum${NC}\n"
-            printf "\n"
-            confirm=$(ask "Add these rules? [y/N]")
-            case "$confirm" in
-                y|Y|yes|Yes)
-                    printf "\n# NumNum calculator\nwindowrule = float on, match:class numnum\nwindowrule = border_size 0, match:class numnum\n" >> "$HYPR_CONF"
-                    ok "Hyprland rules added"
-                    ;;
-                *)
-                    info "Skipped"
-                    ;;
-            esac
-        fi
-        ;;
-    2)
-        # Niri
-        NIRI_CONF="$HOME/.config/niri/config.kdl"
-        if [ ! -f "$NIRI_CONF" ]; then
-            warn "Niri config not found at $NIRI_CONF, skipping"
-        elif grep -q "numnum" "$NIRI_CONF" 2>/dev/null; then
-            ok "Niri already has numnum rules, skipping"
-        else
-            printf "\n"
-            info "Will add to $NIRI_CONF:"
-            printf "  ${YELLOW}window-rule {${NC}\n"
-            printf "  ${YELLOW}    match app-id=\"numnum\"${NC}\n"
-            printf "  ${YELLOW}    open-floating true${NC}\n"
-            printf "  ${YELLOW}    border { off }${NC}\n"
-            printf "  ${YELLOW}    focus-ring { off }${NC}\n"
-            printf "  ${YELLOW}}${NC}\n"
-            printf "\n"
-            confirm=$(ask "Add these rules? [y/N]")
-            case "$confirm" in
-                y|Y|yes|Yes)
-                    cat >> "$NIRI_CONF" << 'NIRI_RULES'
+    1|2)
+        confirm=$(ask "Integrate NumNum with your window manager (floating, no borders)? [y/N]")
+        case "$confirm" in
+            y|Y|yes|Yes)
+                if [ "$wm_choice" = "1" ]; then
+                    # Hyprland
+                    HYPR_CONF="$HOME/.config/hypr/hyprland.conf"
+                    if [ ! -f "$HYPR_CONF" ]; then
+                        warn "Hyprland config not found at $HYPR_CONF, skipping"
+                    elif grep -q "numnum" "$HYPR_CONF" 2>/dev/null; then
+                        ok "NumNum is already integrated with Hyprland"
+                    else
+                        printf "\n# NumNum calculator\nwindowrule = float on, match:class numnum\nwindowrule = border_size 0, match:class numnum\n" >> "$HYPR_CONF"
+                        ok "Hyprland rules added to $HYPR_CONF"
+                    fi
+                else
+                    # Niri
+                    NIRI_CONF="$HOME/.config/niri/config.kdl"
+                    if [ ! -f "$NIRI_CONF" ]; then
+                        warn "Niri config not found at $NIRI_CONF, skipping"
+                    elif grep -q "numnum" "$NIRI_CONF" 2>/dev/null; then
+                        ok "NumNum is already integrated with Niri"
+                    else
+                        cat >> "$NIRI_CONF" << 'NIRI_RULES'
 
 // NumNum calculator
 window-rule {
@@ -144,13 +122,14 @@ window-rule {
     }
 }
 NIRI_RULES
-                    ok "Niri rules added"
-                    ;;
-                *)
-                    info "Skipped"
-                    ;;
-            esac
-        fi
+                        ok "Niri rules added to $NIRI_CONF"
+                    fi
+                fi
+                ;;
+            *)
+                info "Skipped window manager integration"
+                ;;
+        esac
         ;;
     *)
         info "Skipped window manager setup"
