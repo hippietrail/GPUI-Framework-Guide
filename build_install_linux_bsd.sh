@@ -50,7 +50,7 @@ ok "Binary installed to $BIN_DIR/$APP_NAME"
 # ── Install icons ───────────────────────────────────────────────────────
 
 mkdir -p "$ICON_DIR"
-cp "assets/icons/numnum-dark.svg" "$ICON_DIR/numnum.svg"
+cp "assets/icons/numnum.svg" "$ICON_DIR/numnum.svg"
 ok "Icon installed"
 
 # ── Desktop entry ───────────────────────────────────────────────────────
