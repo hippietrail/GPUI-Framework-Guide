@@ -528,6 +528,24 @@ impl<'a> Lexer<'a> {
 
         // Special multi-word operators / functions
         match first_word {
+            "of" => {
+                if self.try_consume_word("what") && self.try_consume_word("is") {
+                    return Some(Token { kind: TokenKind::OfWhatIs, span: start..self.pos });
+                }
+                self.pos = saved_pos;
+            }
+            "on" => {
+                if self.try_consume_word("what") && self.try_consume_word("is") {
+                    return Some(Token { kind: TokenKind::OnWhatIs, span: start..self.pos });
+                }
+                self.pos = saved_pos;
+            }
+            "off" => {
+                if self.try_consume_word("what") && self.try_consume_word("is") {
+                    return Some(Token { kind: TokenKind::OffWhatIs, span: start..self.pos });
+                }
+                self.pos = saved_pos;
+            }
             "as" => {
                 // Try "as a % of" / "as a % on" / "as a % off"
                 if self.try_consume_word("a") && self.try_consume_char('%') {

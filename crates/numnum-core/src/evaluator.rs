@@ -432,13 +432,19 @@ impl EvalContext {
     // Fix #9: extracted reverse percent helper
     fn eval_reverse_percent(&mut self, pct_expr: &Expr, result_expr: &Expr, mode: PercentMode) -> Result<Value, EvalError> {
         let p = self.eval_expr(pct_expr)?.as_number().ok_or_else(|| EvalError::TypeMismatch("Percent must be numeric".to_string()))?;
-        let r = self.eval_expr(result_expr)?.as_number().ok_or_else(|| EvalError::TypeMismatch("Result must be numeric".to_string()))?;
-        let result = match mode {
+        let result_val = self.eval_expr(result_expr)?;
+        let r = result_val.as_number().ok_or_else(|| EvalError::TypeMismatch("Result must be numeric".to_string()))?;
+        let computed = match mode {
             PercentMode::Of => r / (p / 100.0),
             PercentMode::On => r / (1.0 + p / 100.0),
             PercentMode::Off => r / (1.0 - p / 100.0),
         };
-        Ok(Value::Number(result))
+        // Preserve unit/currency from the result expression
+        match result_val {
+            Value::WithUnit(_, u) => Ok(Value::WithUnit(computed, u)),
+            Value::WithCurrency(_, c) => Ok(Value::WithCurrency(computed, c)),
+            _ => Ok(Value::Number(computed)),
+        }
     }
 
     // Fix #2: convert RHS to LHS unit BEFORE doing arithmetic
