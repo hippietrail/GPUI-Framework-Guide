@@ -82,7 +82,7 @@ sudo apt install \
   libzstd-dev libsqlite3-dev libvulkan1 libva-dev \
   libglib2.0-dev
 
-cargo build --release
+./build_install_linux_bsd.sh
 ```
 
 ### Linux (Fedora)
@@ -95,7 +95,7 @@ sudo dnf install \
   libzstd-devel sqlite-devel vulkan-loader libva-devel \
   glib2-devel
 
-cargo build --release
+./build_install_linux_bsd.sh
 ```
 
 ### Linux (Arch)
@@ -108,15 +108,18 @@ sudo pacman -S \
   zstd sqlite vulkan-icd-loader libva \
   glib2
 
-cargo build --release
+./build_install_linux_bsd.sh
 ```
 
 ### FreeBSD
 
 ```sh
 sudo pkg install cmake llvm git alsa-lib libX11 sqlite3
-cargo build --release
+
+./build_install_linux_bsd.sh
 ```
+
+The install script builds the release binary, copies it to `~/.local/bin/`, sets up the desktop entry and icon, and optionally configures Hyprland or Niri window rules.
 
 ### macOS
 
