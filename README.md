@@ -4,7 +4,7 @@ A text editor that does math. Type what you're thinking, get answers as you type
 
 No buttons, no keypad. Just a blank page that understands numbers, units, currencies, and percentages in plain language. Results appear on the right, lined up with what you wrote. Click any result to copy it.
 
-Open source. Cross-platform. GPU-accelerated.
+Blazingly fast. GPU-rendered UI powered by Zed's [GPUI](https://github.com/zed-industries/zed) framework, the same engine behind the fastest code editor on the planet. Written in Rust. Open source. Cross-platform.
 
 ![NumNum](assets/screenshot.png)
 
