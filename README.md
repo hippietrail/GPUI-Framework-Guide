@@ -81,7 +81,9 @@ sudo apt install \
   libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev \
   libzstd-dev libsqlite3-dev libvulkan1 libva-dev \
   libglib2.0-dev
+```
 
+```sh
 ./build_install_linux_bsd.sh
 ```
 
@@ -94,7 +96,9 @@ sudo dnf install \
   wayland-devel libxcb-devel libxkbcommon-x11-devel \
   libzstd-devel sqlite-devel vulkan-loader libva-devel \
   glib2-devel
+```
 
+```sh
 ./build_install_linux_bsd.sh
 ```
 
@@ -107,7 +111,9 @@ sudo pacman -S \
   wayland libxcb libxkbcommon-x11 \
   zstd sqlite vulkan-icd-loader libva \
   glib2
+```
 
+```sh
 ./build_install_linux_bsd.sh
 ```
 
@@ -115,7 +121,9 @@ sudo pacman -S \
 
 ```sh
 sudo pkg install cmake llvm git alsa-lib libX11 sqlite3
+```
 
+```sh
 ./build_install_linux_bsd.sh
 ```
 
