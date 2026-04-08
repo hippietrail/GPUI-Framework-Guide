@@ -587,9 +587,9 @@ impl Editor {
         }
     }
 
-    fn tab(&mut self, _: &Tab, window: &mut Window, cx: &mut Context<Self>) {
+    fn tab(&mut self, _: &Tab, _: &mut Window, cx: &mut Context<Self>) {
         if self.completion.visible {
-            self.accept_completion(window, cx);
+            self.completion_move_down(cx);
         }
     }
 
