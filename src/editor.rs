@@ -237,7 +237,7 @@ impl Editor {
         let mut items: Vec<CompletionItem> = Vec::new();
 
         // Keywords first — take priority over unit/currency aliases (e.g. "in" is keyword, not inch)
-        for name in &["in", "to", "as", "into", "of", "from", "on", "off", "what"] {
+        for name in &["in", "to", "as", "into", "of", "from", "on", "off", "what is"] {
             items.push(CompletionItem {
                 label: name.to_string(),
                 category: CompletionCategory::Keyword,

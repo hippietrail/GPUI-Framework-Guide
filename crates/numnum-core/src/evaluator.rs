@@ -439,9 +439,10 @@ impl EvalContext {
             PercentMode::On => r / (1.0 + p / 100.0),
             PercentMode::Off => r / (1.0 - p / 100.0),
         };
-        // Preserve unit/currency from the result expression
+        // Preserve unit/currency/compound from the result expression
         match result_val {
             Value::WithUnit(_, u) => Ok(Value::WithUnit(computed, u)),
+            Value::WithCompoundUnit(_, f) => Ok(Value::WithCompoundUnit(computed, f)),
             Value::WithCurrency(_, c) => Ok(Value::WithCurrency(computed, c)),
             _ => Ok(Value::Number(computed)),
         }
