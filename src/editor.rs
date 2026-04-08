@@ -115,13 +115,19 @@ const GUTTER_WIDTH_FACTOR: f32 = 2.5;
 /// Gutter padding as a fraction of font size.
 const GUTTER_PADDING_FACTOR: f32 = 0.5;
 
+enum SelectMode {
+    Character,
+    Word { anchor_start: usize, anchor_end: usize },
+    Line { anchor_start: usize, anchor_end: usize },
+}
+
 pub struct Editor {
     focus_handle: FocusHandle,
     content: String,
     selected_range: Range<usize>,
     selection_reversed: bool,
     marked_range: Option<Range<usize>>,
-    is_selecting: bool,
+    select_mode: Option<SelectMode>,
     undo_stack: Vec<UndoEntry>,
     redo_stack: Vec<UndoEntry>,
     on_change: Option<OnChangeFn>,
@@ -164,7 +170,7 @@ impl Editor {
             selected_range: 0..0,
             selection_reversed: false,
             marked_range: None,
-            is_selecting: false,
+            select_mode: None,
             undo_stack: Vec::new(),
             redo_stack: Vec::new(),
             on_change,
@@ -334,6 +340,30 @@ impl Editor {
             }
         }
         i
+    }
+
+    fn find_word_end(&self, offset: usize) -> usize {
+        let bytes = self.content.as_bytes();
+        let mut i = offset;
+        while i < bytes.len() && (bytes[i].is_ascii_alphanumeric() || bytes[i] == b'_') {
+            i += 1;
+        }
+        i
+    }
+
+    fn surrounding_word(&self, offset: usize) -> Range<usize> {
+        self.find_word_start(offset)..self.find_word_end(offset)
+    }
+
+    fn line_range(&self, offset: usize) -> Range<usize> {
+        let (line, _) = self.line_col_for_offset(offset);
+        let start = self.line_start_offset(line);
+        let end = if line + 1 < self.line_count() {
+            self.line_start_offset(line + 1)
+        } else {
+            self.content.len()
+        };
+        start..end
     }
 
     fn update_completion_state(&mut self) {
@@ -681,23 +711,84 @@ impl Editor {
         _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.is_selecting = true;
         let idx = self.index_for_mouse_position(event.position);
-        if event.modifiers.shift {
-            self.select_to(idx, cx);
-        } else {
-            self.move_to(idx, cx);
+
+        match event.click_count {
+            2 => {
+                // Double-click: select word
+                let word = self.surrounding_word(idx);
+                self.selected_range = word.clone();
+                self.selection_reversed = false;
+                self.select_mode = Some(SelectMode::Word {
+                    anchor_start: word.start,
+                    anchor_end: word.end,
+                });
+                self.pause_blinking(cx);
+                cx.notify();
+            }
+            3 => {
+                // Triple-click: select line
+                let line = self.line_range(idx);
+                self.selected_range = line.clone();
+                self.selection_reversed = false;
+                self.select_mode = Some(SelectMode::Line {
+                    anchor_start: line.start,
+                    anchor_end: line.end,
+                });
+                self.pause_blinking(cx);
+                cx.notify();
+            }
+            _ => {
+                // Single click
+                self.select_mode = Some(SelectMode::Character);
+                if event.modifiers.shift {
+                    self.select_to(idx, cx);
+                } else {
+                    self.move_to(idx, cx);
+                }
+            }
         }
     }
 
     fn on_mouse_up(&mut self, _: &MouseUpEvent, _: &mut Window, _: &mut Context<Self>) {
-        self.is_selecting = false;
+        self.select_mode = None;
     }
 
     fn on_mouse_move(&mut self, event: &MouseMoveEvent, _: &mut Window, cx: &mut Context<Self>) {
-        if self.is_selecting {
-            let idx = self.index_for_mouse_position(event.position);
-            self.select_to(idx, cx);
+        let Some(ref mode) = self.select_mode else { return };
+        let idx = self.index_for_mouse_position(event.position);
+
+        match mode {
+            SelectMode::Character => {
+                self.select_to(idx, cx);
+            }
+            SelectMode::Word { anchor_start, anchor_end } => {
+                let drag_word = self.surrounding_word(idx);
+                let (anchor_start, anchor_end) = (*anchor_start, *anchor_end);
+                // Extend from anchor word to drag word
+                if drag_word.start < anchor_start {
+                    self.selected_range = drag_word.start..anchor_end;
+                    self.selection_reversed = true;
+                } else {
+                    self.selected_range = anchor_start..drag_word.end;
+                    self.selection_reversed = false;
+                }
+                self.pause_blinking(cx);
+                cx.notify();
+            }
+            SelectMode::Line { anchor_start, anchor_end } => {
+                let drag_line = self.line_range(idx);
+                let (anchor_start, anchor_end) = (*anchor_start, *anchor_end);
+                if drag_line.start < anchor_start {
+                    self.selected_range = drag_line.start..anchor_end;
+                    self.selection_reversed = true;
+                } else {
+                    self.selected_range = anchor_start..drag_line.end;
+                    self.selection_reversed = false;
+                }
+                self.pause_blinking(cx);
+                cx.notify();
+            }
         }
     }
 
