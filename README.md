@@ -1,10 +1,12 @@
 # NumNum
 
-A notebook calculator for people who think in text. Type expressions in plain language, see results live. Units convert automatically, currencies update from the web, and everything stays in a single pane you can scroll through like a scratch pad.
+A text editor that does math. Type what you're thinking, get answers as you type.
 
-Built with [GPUI](https://github.com/zed-industries/zed) (Zed's GPU-accelerated UI framework) and Rust.
+No buttons, no keypad. Just a blank page that understands numbers, units, currencies, and percentages in plain language. Results appear on the right, lined up with what you wrote. Click any result to copy it.
 
-## What it does
+Open source. Cross-platform. GPU-accelerated.
+
+## How it works
 
 ```
 rent = 45000 INR                              ₹ 45,000
@@ -13,48 +15,62 @@ utilities = rent * 5%                         ₹ 2,250
 total = rent + groceries + utilities          ₹ 59,250
 total in USD                                  $709.28
 
-5 km * 3 km                                   15 km²
-60 km / 2 hours                                30 km/h
-220 volts * 10 amps                            2,200 W
+5 m * 3 m                                    15 m²
+60 km / 2 hours                               30 km/h
+220 V * 10 A                                  2,200 W
 
-20% of what is 11.68 cm                        58.4 cm
-500 kcal in kJ                                 2,092 kJ
+500 kcal in kJ                                2,092 kJ
+20% of what is 11.68 cm                       58.4 cm
+0xff in decimal                               255
 ```
 
-**Arithmetic** with operator precedence, parentheses, variables, and assignments.
+You type on the left. Results show up on the right. Change a variable and everything downstream updates. That's it.
 
-**170+ currencies** with live exchange rates. Prefix symbols (`$`, `₹`, `€`, `£`, `¥`) and ISO codes (`USD`, `INR`, `GBP`) both work. Rates update from the Open Exchange Rates API on startup, with a hardcoded fallback for offline use.
+## What it understands
 
-**100+ units** across length, mass, time, temperature, area, volume, data, angular, typography, power, energy, voltage, current, resistance, and frequency. Compound units from multiplication and division (`km/h`, `kg/L`, `W`). Shorthands like `mph`, `kmh`, `kWh`. The word `per` works as a division operator.
+**Math.** Full arithmetic with operator precedence, parentheses, and nested functions (`sin`, `cos`, `sqrt`, `log`, `abs`, `round`, 18 total). Variables persist across lines. Compound assignments (`tax += 5`) work.
 
-**Percent operations**: `20% of 500`, `20% on 500`, `20% off 500`, `15% of what is 75`, inline `500 + 10%`.
+**170+ currencies.** Symbols (`$`, `₹`, `€`, `£`, `¥`), ISO codes (`USD`, `INR`, `GBP`), and full names (`indian rupee`, `swiss franc`). Rates pulled live on startup, cached in SQLite, with a hardcoded fallback for offline use.
 
-**Aggregation**: `sum`, `average`, `prev` across lines.
+**100+ units.** Length, mass, time, temperature, area, volume, data, power, energy, voltage, current, resistance, frequency. Write `60 km / 2 hours` and get `30 km/h`. Write `220 V * 10 A` and get `2,200 W`. Shorthands like `mph`, `kmh`, `kbps` work. So does the word `per` (`100 km per hour`).
 
-**Representations**: `255 in hex`, `10 in binary`, scientific notation.
+**Percentages in plain English.** `20% of 500`, `20% on 500`, `20% off 500`, `15% of what is 75`, or inline: `500 + 10%`.
 
-**Number formatting**: US (`1,234,567.89`), Indian (`12,34,567.89`), and European (`1.234.567,89`) styles.
+**Number formats.** US (`1,234,567.89`), Indian (`12,34,567.89`), European (`1.234.567,89`). Paste formatted numbers from a spreadsheet and they parse correctly in the active locale.
 
-## Features
+**Representations.** `255 in hex`, `10 in binary`, `0xff in decimal`, scientific notation.
 
-- Syntax highlighting with theme-aware colors
-- Autocomplete for functions, units, currencies, keywords, and variables
-- 8 bundled color themes (Catppuccin Mocha/Latte, Tokyo Night/Day, Rose Pine Moon/Dawn, Zed One Dark/Light)
-- Custom titlebar option with macOS-style traffic light buttons
-- Ctrl+scroll to change font size
-- Click-to-copy results (full precision or display format)
-- Settings pane for font, precision, appearance, themes, number format, diagnostics
-- Persistent settings and window size across sessions
-- Dark/light/auto appearance modes (follows system on Linux via XDG Desktop Portal)
+**Aggregation.** `sum`, `average`, `prev` reference results from earlier lines.
+
+## The editor
+
+NumNum is not a CLI tool or a widget. It's a proper text editor with:
+
+- Syntax highlighting tuned for math expressions
+- Autocomplete that knows every function, unit, currency, and variable in scope
+- Double-click to select a word, triple-click for a line
+- Undo/redo, cut/copy/paste, soft line wrapping
+- Ctrl+scroll to change font size on the fly
+
+Results on the right scroll with the editor and stay aligned, even when lines wrap. Click any result to copy it to the clipboard.
+
+## Looks
+
+8 color themes ship out of the box: Catppuccin Mocha, Catppuccin Latte, Tokyo Night, Tokyo Night Day, Rose Pine Moon, Rose Pine Dawn, Zed One Dark, Zed One Light.
+
+Drop a `.toml` file in `~/.config/numnum/themes/` to add your own. Dark, light, and auto (follows system) appearance modes.
+
+Optional custom titlebar with macOS-style traffic light buttons, or use your system's native one, or go with no titlebar at all.
 
 ## Building from source
 
-### Requirements
+### You'll need
 
 - Rust 1.85+ (edition 2024)
 - A C/C++ compiler
 - CMake
-- Platform-specific libraries (see below)
+
+Plus platform-specific libraries:
 
 ### Linux (Debian/Ubuntu)
 
@@ -104,7 +120,7 @@ cargo build --release
 
 ### macOS
 
-Requires Xcode (for Metal shader compilation and system frameworks).
+Xcode is required for Metal shader compilation and system frameworks.
 
 ```sh
 xcode-select --install
@@ -114,30 +130,35 @@ cargo build --release
 
 ### Windows
 
-Requires Visual Studio 2022 (or Build Tools) with the "Desktop development with C++" workload and a Windows 10/11 SDK.
+Visual Studio 2022 (or Build Tools) with the "Desktop development with C++" workload and a Windows 10/11 SDK.
 
 ```sh
 cargo build --release
 ```
 
-If the build fails looking for `fxc.exe` (HLSL shader compiler), set `GPUI_FXC_PATH` to your Windows SDK bin directory.
+If the build can't find `fxc.exe` (HLSL shader compiler), point `GPUI_FXC_PATH` at your Windows SDK bin directory.
 
-### Running
+### Run it
 
 ```sh
 cargo run --release
 ```
 
-The binary is at `target/release/numnum`.
+Binary lands at `target/release/numnum`.
 
 ## Configuration
 
-Settings live in `~/.config/numnum/settings.toml` (Linux/FreeBSD), `~/Library/Application Support/numnum/settings.toml` (macOS), or `%APPDATA%/numnum/settings.toml` (Windows).
+Settings file: `~/.config/numnum/settings.toml` (Linux/FreeBSD), `~/Library/Application Support/numnum/settings.toml` (macOS), `%APPDATA%/numnum/settings.toml` (Windows).
 
-Themes are TOML files in the `themes/` subdirectory of the config folder. Drop any `.toml` theme file there and it shows up in the settings dropdown.
+Everything is configurable from the in-app settings pane (click the gear icon): font family and size, decimal precision, number format, color theme, appearance mode, titlebar style, and more.
+
+## Built with
+
+- [GPUI](https://github.com/zed-industries/zed) for GPU-accelerated rendering (from the Zed editor)
+- [cosmic-text](https://github.com/pop-os/cosmic-text) for text shaping
+- Pratt parser for expression evaluation
+- SQLite for exchange rate caching
 
 ## License
 
-NumNum is licensed under the [GNU General Public License v2.0](LICENSE).
-
-The vendored GPUI crates (under `crates/`) are licensed under the [Apache License 2.0](LICENSE-APACHE), copyright Zed Industries, Inc.
+NumNum is licensed under [GPLv2](LICENSE). The vendored GPUI crates are licensed under [Apache 2.0](LICENSE-APACHE).
