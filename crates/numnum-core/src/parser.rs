@@ -233,6 +233,18 @@ impl Parser {
             return Ok(Expr::WithUnit { expr: Box::new(expr), unit: id });
         }
 
+        // Check for compound unit shorthand (e.g. "55 mph" → 55 mi./h)
+        if let TokenKind::CompoundUnitShorthand(num_id, den_id) = self.peek() {
+            let num_id = *num_id;
+            let den_id = *den_id;
+            self.advance();
+            return Ok(Expr::BinaryOp {
+                op: BinOp::Div,
+                lhs: Box::new(Expr::WithUnit { expr: Box::new(expr), unit: num_id }),
+                rhs: Box::new(Expr::WithUnit { expr: Box::new(Expr::Number(1.0)), unit: den_id }),
+            });
+        }
+
         // Check for currency (suffix position: "10 USD")
         if let TokenKind::Currency(id) = self.peek() {
             let id = *id;

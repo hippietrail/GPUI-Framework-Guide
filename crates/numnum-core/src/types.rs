@@ -35,6 +35,12 @@ pub enum Dimension {
     Data,
     Angular,
     Typography,
+    Power,
+    Energy,
+    Voltage,
+    Current,
+    Resistance,
+    Frequency,
 }
 
 #[derive(Debug, Clone)]
@@ -57,7 +63,8 @@ pub struct CurrencyDef {
 pub struct UnitTable {
     pub units: Vec<UnitDef>,
     pub name_to_id: HashMap<String, UnitId>,
-    squared_cache: HashMap<UnitId, UnitId>, // length → area unit mapping
+    squared_cache: HashMap<UnitId, UnitId>,
+    pub compound_shorthands: HashMap<String, (UnitId, UnitId)>, // "mph" → (mile_id, hour_id)
 }
 
 #[derive(Debug, Clone)]
@@ -80,10 +87,16 @@ impl Default for CurrencyTable {
 
 impl UnitTable {
     pub fn new() -> Self {
-        let mut table = UnitTable { units: Vec::new(), name_to_id: HashMap::new(), squared_cache: HashMap::new() };
+        let mut table = UnitTable {
+            units: Vec::new(),
+            name_to_id: HashMap::new(),
+            squared_cache: HashMap::new(),
+            compound_shorthands: HashMap::new(),
+        };
         table.build();
         table.register_plurals();
         table.build_squared_cache();
+        table.build_compound_shorthands();
         table
     }
 
@@ -200,6 +213,12 @@ impl UnitTable {
         self.build_data_units();
         self.build_angular_units();
         self.build_typography_units();
+        self.build_power_units();
+        self.build_energy_units();
+        self.build_voltage_units();
+        self.build_current_units();
+        self.build_resistance_units();
+        self.build_frequency_units();
     }
 
     fn build_length_units(&mut self) {
@@ -357,6 +376,102 @@ impl UnitTable {
             &["point", "points", "pt", "pt."]);
         self.add("em", "em", Dimension::Typography, 16.0, 0.0,
             &["em", "ems"]);
+    }
+
+    fn build_power_units(&mut self) {
+        self.add("milliwatt", "mW", Dimension::Power, 0.001, 0.0,
+            &["milliwatt", "milliwatts", "mw"]);
+        self.add("watt", "W", Dimension::Power, 1.0, 0.0,
+            &["watt", "watts"]);
+        self.add("kilowatt", "kW", Dimension::Power, 1e3, 0.0,
+            &["kilowatt", "kilowatts", "kw"]);
+        self.add("megawatt", "MW", Dimension::Power, 1e6, 0.0,
+            &["megawatt", "megawatts"]);
+        self.add("gigawatt", "GW", Dimension::Power, 1e9, 0.0,
+            &["gigawatt", "gigawatts", "gw"]);
+        self.add("horsepower", "hp", Dimension::Power, 745.7, 0.0,
+            &["horsepower", "hp"]);
+    }
+
+    fn build_energy_units(&mut self) {
+        self.add("joule", "J", Dimension::Energy, 1.0, 0.0,
+            &["joule", "joules"]);
+        self.add("kilojoule", "kJ", Dimension::Energy, 1e3, 0.0,
+            &["kilojoule", "kilojoules", "kj"]);
+        self.add("megajoule", "MJ", Dimension::Energy, 1e6, 0.0,
+            &["megajoule", "megajoules", "mj"]);
+        self.add("calorie", "cal", Dimension::Energy, 4.184, 0.0,
+            &["calorie", "calories", "cal"]);
+        self.add("kilocalorie", "kcal", Dimension::Energy, 4184.0, 0.0,
+            &["kilocalorie", "kilocalories", "kcal"]);
+        self.add("watt_hour", "Wh", Dimension::Energy, 3600.0, 0.0,
+            &["watt hour", "watt hours", "wh"]);
+        self.add("kilowatt_hour", "kWh", Dimension::Energy, 3.6e6, 0.0,
+            &["kilowatt hour", "kilowatt hours", "kwh"]);
+    }
+
+    fn build_voltage_units(&mut self) {
+        self.add("millivolt", "mV", Dimension::Voltage, 0.001, 0.0,
+            &["millivolt", "millivolts", "mv"]);
+        self.add("volt", "V", Dimension::Voltage, 1.0, 0.0,
+            &["volt", "volts"]);
+        self.add("kilovolt", "kV", Dimension::Voltage, 1e3, 0.0,
+            &["kilovolt", "kilovolts", "kv"]);
+    }
+
+    fn build_current_units(&mut self) {
+        self.add("milliampere", "mA", Dimension::Current, 0.001, 0.0,
+            &["milliampere", "milliamperes", "milliamp", "milliamps", "ma"]);
+        self.add("ampere", "A", Dimension::Current, 1.0, 0.0,
+            &["ampere", "amperes", "amp", "amps"]);
+    }
+
+    fn build_resistance_units(&mut self) {
+        self.add("ohm", "\u{2126}", Dimension::Resistance, 1.0, 0.0,
+            &["ohm", "ohms", "\u{2126}"]);
+        self.add("kilohm", "k\u{2126}", Dimension::Resistance, 1e3, 0.0,
+            &["kilohm", "kilohms", "kohm", "kohms", "k\u{2126}"]);
+    }
+
+    fn build_frequency_units(&mut self) {
+        self.add("hertz", "Hz", Dimension::Frequency, 1.0, 0.0,
+            &["hertz", "hz"]);
+        self.add("kilohertz", "kHz", Dimension::Frequency, 1e3, 0.0,
+            &["kilohertz", "khz"]);
+        self.add("megahertz", "MHz", Dimension::Frequency, 1e6, 0.0,
+            &["megahertz", "mhz"]);
+        self.add("gigahertz", "GHz", Dimension::Frequency, 1e9, 0.0,
+            &["gigahertz", "ghz"]);
+    }
+
+    fn build_compound_shorthands(&mut self) {
+        let shorthands: &[(&str, &str, &str)] = &[
+            // Speed
+            ("kmh", "kilometer", "hour"),
+            ("kph", "kilometer", "hour"),
+            ("mph", "mile", "hour"),
+            ("mps", "meter", "second"),
+            ("fps", "foot", "second"),
+            ("knot", "nautical_mile", "hour"),
+            ("knots", "nautical_mile", "hour"),
+            ("kn", "nautical_mile", "hour"),
+            // Data rate
+            ("bps", "bit", "second"),
+            ("kbps", "kilobit", "second"),
+            ("mbps", "megabit", "second"),
+            ("gbps", "gigabit", "second"),
+        ];
+        for &(short, num_name, den_name) in shorthands {
+            if let (Some(num_id), Some(den_id)) = (self.lookup_by_canonical(num_name), self.lookup_by_canonical(den_name)) {
+                self.compound_shorthands.insert(short.to_string(), (num_id, den_id));
+            }
+        }
+    }
+
+    fn lookup_by_canonical(&self, canonical: &str) -> Option<UnitId> {
+        self.units.iter().enumerate()
+            .find(|(_, u)| u.canonical == canonical)
+            .map(|(i, _)| UnitId(i as u16))
     }
 
     pub fn lookup(&self, name: &str) -> Option<UnitId> {

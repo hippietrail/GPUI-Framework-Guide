@@ -16,6 +16,7 @@ pub enum TokenKind {
     OfWhatIs, OnWhatIs, OffWhatIs,
     Func(FuncKind),
     Unit(UnitId),
+    CompoundUnitShorthand(UnitId, UnitId), // e.g. "mph" → (mile, hour)
     Currency(CurrencyId),
     CurrencySymbol(CurrencyId),
     Scale(f64),
@@ -413,6 +414,11 @@ impl<'a> Lexer<'a> {
             return Token { kind: TokenKind::Currency(id), span: start..self.pos };
         }
 
+        // Compound unit shorthand (e.g. mph, kmh, bps)
+        if let Some(&(num_id, den_id)) = self.unit_table.compound_shorthands.get(&lower) {
+            return Token { kind: TokenKind::CompoundUnitShorthand(num_id, den_id), span: start..self.pos };
+        }
+
         // Plain identifier (variable)
         Token { kind: TokenKind::Ident(word), span: start..self.pos }
     }
@@ -422,7 +428,7 @@ impl<'a> Lexer<'a> {
             "plus" | "with" | "and" => BinOp::Add,
             "minus" | "without" | "subtract" => BinOp::Sub,
             "times" | "mul" | "mult" | "multiply" => BinOp::Mul,
-            "divide" => BinOp::Div,
+            "divide" | "per" => BinOp::Div,
             "mod" => BinOp::Mod,
             "xor" => BinOp::BitXor,
             _ => return None,

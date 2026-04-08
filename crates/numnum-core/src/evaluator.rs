@@ -705,12 +705,21 @@ fn is_valid_compound(num_dim: Dimension, den_dim: Dimension, op: BinOp) -> bool 
             // Fuel economy: volume/length (L/km) or length/volume (km/L)
             (Volume, Length) | (Length, Volume) |
             // Area rate: area/time (m²/s)
-            (Area, Time)
+            (Area, Time) |
+            // Electrical: W/A = V, W/V = A, V/A = Ω
+            (Power, Current) | (Power, Voltage) | (Voltage, Current) |
+            // Energy/time = power: J/s = W
+            (Energy, Time) |
+            // Energy/power = time: J/W = s
+            (Energy, Power)
         ),
         BinOp::Mul => matches!(
             (num_dim, den_dim),
-            // These are handled by lookup_squared already, but as fallback:
-            (Length, Length)
+            (Length, Length) |
+            // Electrical: V × A = W
+            (Voltage, Current) | (Current, Voltage) |
+            // Power × time = energy: W × h = Wh
+            (Power, Time) | (Time, Power)
         ),
         _ => false,
     }
