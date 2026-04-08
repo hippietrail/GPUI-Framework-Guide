@@ -117,6 +117,7 @@ fn main() {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     focus: true,
                     window_min_size: Some(size(px(480.0), px(360.0))),
+                    app_id: Some("numnum".to_string()),
                     // macOS: transparent titlebar keeps system traffic lights
                     titlebar: if custom_titlebar {
                         Some(TitlebarOptions {
