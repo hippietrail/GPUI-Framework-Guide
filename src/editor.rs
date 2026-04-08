@@ -1736,15 +1736,13 @@ impl Render for Editor {
                             .w_full()
                             .when_some(row_bg, |el, bg| el.bg(bg))
                             .child(
-                                // Line number gutter — last visual line, baseline-aligned
-                                // We match the editor's line_height so both texts share
-                                // the same vertical center within each row.
+                                // Line number gutter — first visual line, baseline-aligned
                                 div()
                                     .w(gutter_w)
                                     .h(row_height)
                                     .flex_shrink_0()
                                     .flex()
-                                    .items_end()
+                                    .items_start()
                                     .justify_end()
                                     .pr(gutter_pad)
                                     .child(
