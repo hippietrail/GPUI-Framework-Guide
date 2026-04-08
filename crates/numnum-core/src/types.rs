@@ -57,6 +57,7 @@ pub struct CurrencyDef {
 pub struct UnitTable {
     pub units: Vec<UnitDef>,
     pub name_to_id: HashMap<String, UnitId>,
+    squared_cache: HashMap<UnitId, UnitId>, // length → area unit mapping
 }
 
 #[derive(Debug, Clone)]
@@ -79,25 +80,41 @@ impl Default for CurrencyTable {
 
 impl UnitTable {
     pub fn new() -> Self {
-        let mut table = UnitTable { units: Vec::new(), name_to_id: HashMap::new() };
+        let mut table = UnitTable { units: Vec::new(), name_to_id: HashMap::new(), squared_cache: HashMap::new() };
         table.build();
         table.register_plurals();
+        table.build_squared_cache();
         table
+    }
+
+    fn build_squared_cache(&mut self) {
+        let length_units: Vec<(UnitId, f64)> = self.units.iter().enumerate()
+            .filter(|(_, u)| u.dimension == Dimension::Length)
+            .map(|(i, u)| (UnitId(i as u16), u.to_base))
+            .collect();
+        for &(len_id, to_base) in &length_units {
+            let sq_to_base = to_base * to_base;
+            for (i, u) in self.units.iter().enumerate() {
+                if u.dimension == Dimension::Area && (u.to_base - sq_to_base).abs() < 1e-12_f64.max(sq_to_base * 1e-6) {
+                    self.squared_cache.insert(len_id, UnitId(i as u16));
+                    break;
+                }
+            }
+        }
     }
 
     /// Auto-register plural forms for multi-word variant names.
     /// E.g. "metric ton" → also registers "metric tons".
     fn register_plurals(&mut self) {
-        let existing: Vec<(String, UnitId)> = self.name_to_id.iter()
-            .map(|(k, v)| (k.clone(), *v))
+        // Collect only the entries that need plurals to avoid cloning everything
+        let to_add: Vec<(String, UnitId)> = self.name_to_id.iter()
+            .filter(|(name, _)| {
+                name.contains(' ') && !name.ends_with('s') && !name.ends_with("feet")
+            })
+            .map(|(name, id)| (format!("{}s", name), *id))
             .collect();
-        for (name, id) in &existing {
-            if !name.contains(' ') { continue; }
-            if name.ends_with('s') || name.ends_with("feet") { continue; }
-            let plural = format!("{}s", name);
-            if !self.name_to_id.contains_key(&plural) {
-                self.name_to_id.insert(plural, *id);
-            }
+        for (plural, id) in to_add {
+            self.name_to_id.entry(plural).or_insert(id);
         }
     }
 
@@ -350,19 +367,9 @@ impl UnitTable {
         self.units.get(id.0 as usize)
     }
 
-    /// Find the area unit corresponding to squaring a length unit.
-    /// E.g. meter → sq_m, kilometer → sq_km, foot → sq_ft.
+    /// Find the area unit corresponding to squaring a length unit (O(1) cached lookup).
     pub fn lookup_squared(&self, unit_id: UnitId) -> Option<UnitId> {
-        let def = self.get(unit_id)?;
-        if def.dimension != Dimension::Length { return None; }
-        let sq_to_base = def.to_base * def.to_base;
-        // Find an Area unit whose to_base matches the squared factor
-        for (i, u) in self.units.iter().enumerate() {
-            if u.dimension == Dimension::Area && (u.to_base - sq_to_base).abs() < sq_to_base * 1e-6 {
-                return Some(UnitId(i as u16));
-            }
-        }
-        None
+        self.squared_cache.get(&unit_id).copied()
     }
 
     pub fn convert(&self, value: f64, from: UnitId, to: UnitId) -> Option<f64> {
@@ -389,19 +396,19 @@ impl CurrencyTable {
     /// Auto-register plural forms for all multi-word variant names.
     /// E.g. "indian rupee" → also registers "indian rupees".
     fn register_plurals(&mut self) {
-        let existing: Vec<(String, CurrencyId)> = self.name_to_id.iter()
-            .map(|(k, v)| (k.clone(), *v))
+        let to_add: Vec<(String, CurrencyId)> = self.name_to_id.iter()
+            .filter(|(name, _)| {
+                name.contains(' ')
+                    && !name.ends_with('s')
+                    && !name.ends_with("lei")
+                    && !name.ends_with("leva")
+                    && !name.ends_with("kronor")
+                    && !name.ends_with("kroner")
+            })
+            .map(|(name, id)| (format!("{}s", name), *id))
             .collect();
-        for (name, id) in &existing {
-            if !name.contains(' ') { continue; }
-            // Skip names that already look plural
-            if name.ends_with('s') || name.ends_with("lei") || name.ends_with("leva")
-                || name.ends_with("kronor") || name.ends_with("kroner") { continue; }
-            // Generate plural: simple "s" suffix works for most currencies
-            let plural = format!("{}s", name);
-            if !self.name_to_id.contains_key(&plural) {
-                self.name_to_id.insert(plural, *id);
-            }
+        for (plural, id) in to_add {
+            self.name_to_id.entry(plural).or_insert(id);
         }
     }
 

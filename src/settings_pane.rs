@@ -58,49 +58,42 @@ impl SettingsPane {
 
     pub fn update_font_size(&mut self, size: f32, cx: &mut Context<Self>) {
         self.settings.editor.font_size = size.clamp(8.0, 72.0);
-        self.settings.save();
+        self.settings.save(); // persist on close
         cx.notify();
     }
 
     fn inc_font_size(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.font_size = (self.settings.editor.font_size + 1.0).min(72.0);
-        self.settings.save();
         cx.notify();
     }
 
     fn dec_font_size(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.font_size = (self.settings.editor.font_size - 1.0).max(8.0);
-        self.settings.save();
         cx.notify();
     }
 
     fn inc_precision(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.precision = (self.settings.editor.precision + 1).min(10);
-        self.settings.save();
         cx.notify();
     }
 
     fn dec_precision(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.precision = self.settings.editor.precision.saturating_sub(1);
-        self.settings.save();
         cx.notify();
     }
 
     fn inc_tab_size(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.tab_size = (self.settings.editor.tab_size + 1).min(8);
-        self.settings.save();
         cx.notify();
     }
 
     fn dec_tab_size(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.tab_size = self.settings.editor.tab_size.max(2) - 1;
-        self.settings.save();
         cx.notify();
     }
 
     fn toggle_copy_full_precision(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.copy_full_precision = !self.settings.editor.copy_full_precision;
-        self.settings.save();
         cx.notify();
     }
 
@@ -111,7 +104,6 @@ impl SettingsPane {
             _ => "auto",
         };
         self.settings.appearance.mode = next.to_string();
-        self.settings.save();
         cx.notify();
     }
 
@@ -122,7 +114,6 @@ impl SettingsPane {
             _ => "us",
         };
         self.settings.editor.number_format = next.to_string();
-        self.settings.save();
         cx.notify();
     }
 
@@ -133,13 +124,11 @@ impl SettingsPane {
             _ => "system",
         };
         self.settings.window.title_bar = next.to_string();
-        self.settings.save();
         cx.notify();
     }
 
     fn toggle_show_diagnostics(&mut self, cx: &mut Context<Self>) {
         self.settings.editor.show_diagnostics = !self.settings.editor.show_diagnostics;
-        self.settings.save();
         cx.notify();
     }
 
@@ -153,7 +142,6 @@ impl SettingsPane {
         let idx = dark_themes.iter().position(|(stem, _, _)| stem == current).unwrap_or(0);
         let next = (idx + 1) % dark_themes.len();
         self.settings.appearance.dark_theme = dark_themes[next].0.clone();
-        self.settings.save();
         cx.notify();
     }
 
@@ -167,7 +155,6 @@ impl SettingsPane {
         let idx = light_themes.iter().position(|(stem, _, _)| stem == current).unwrap_or(0);
         let next = (idx + 1) % light_themes.len();
         self.settings.appearance.light_theme = light_themes[next].0.clone();
-        self.settings.save();
         cx.notify();
     }
 
@@ -179,7 +166,6 @@ impl SettingsPane {
     fn select_font(&mut self, name: String, cx: &mut Context<Self>) {
         self.settings.editor.font_family = name;
         self.font_list_open = false;
-        self.settings.save();
         cx.notify();
     }
 
