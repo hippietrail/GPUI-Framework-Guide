@@ -56,6 +56,18 @@ NumNum is not a CLI tool or a widget. It's a proper text editor with:
 
 Results on the right scroll with the editor and stay aligned, even when lines wrap. Click any result to copy it to the clipboard.
 
+## Session persistence
+
+Your work is automatically saved. Every calculation lives in a named session that persists across restarts. No manual save, no dialogs.
+
+- Sessions are stored as JSON in your platform's data directory (`~/.local/share/numnum/sessions/` on Linux/FreeBSD)
+- The most recent session is restored automatically when you reopen NumNum
+- Click the burger menu in the top-right to switch between sessions or start a new one
+- Hover over a session in the list to reveal a close button
+- Empty sessions are cleaned up automatically so they don't clutter the list
+
+![Session Menu](assets/session_menu.png)
+
 ## Looks
 
 8 color themes ship out of the box: Catppuccin Mocha, Catppuccin Latte, Tokyo Night, Tokyo Night Day, Rose Pine Moon, Rose Pine Dawn, Zed One Dark, Zed One Light.
