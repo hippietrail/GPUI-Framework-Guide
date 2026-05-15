@@ -3,9 +3,9 @@ use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use gpui::{
-    App, Context, CursorStyle, Entity, Focusable, MouseButton, MouseDownEvent, MouseMoveEvent,
-    MouseUpEvent, Pixels, Render, ScrollDelta, ScrollHandle, ScrollWheelEvent, SharedString,
-    Window, div, point, prelude::*, px, svg,
+    App, ClickEvent, Context, CursorStyle, Entity, Focusable, MouseButton, MouseDownEvent,
+    MouseMoveEvent, MouseUpEvent, Pixels, Render, ScrollDelta, ScrollHandle, ScrollWheelEvent,
+    SharedString, Window, div, point, prelude::*, px, svg,
 };
 
 use gpui::relative;
@@ -750,14 +750,17 @@ impl Render for NumNumApp {
                                     let path_switch = path.clone();
                                     let path_delete = path.clone();
                                     div()
+                                        .id(format!("session-item-{}", path_switch.display()))
+                                        .group("session_row")
                                         .px(px(8.))
-                                        .py(px(6.))
+                                        .py(px(5.))
                                         .rounded_sm()
                                         .when(is_current, |el| el.bg(theme.selection))
                                         .when(!is_current, |el| {
                                             el.cursor(CursorStyle::PointingHand)
                                                 .hover(|s| s.bg(theme.divider))
-                                                .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                .active(|s| s.bg(theme.divider))
+                                                .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
                                                     this.switch_session(path_switch.clone(), cx);
                                                 }))
                                         })
@@ -767,6 +770,7 @@ impl Render for NumNumApp {
                                                 .flex_row()
                                                 .justify_between()
                                                 .items_center()
+                                                .gap(px(4.))
                                                 .child(
                                                     div()
                                                         .text_size(px(12.))
@@ -788,14 +792,20 @@ impl Render for NumNumApp {
                                                         .when(!is_current, |el| {
                                                             el.child(
                                                                 div()
-                                                                    .px(px(2.))
-                                                                    .text_size(px(10.))
+                                                                    .id(format!("session-delete-{}", path_delete.display()))
+                                                                    .flex()
+                                                                    .items_center()
+                                                                    .justify_center()
+                                                                    .size(px(16.))
+                                                                    .rounded_sm()
+                                                                    .text_size(px(11.))
                                                                     .text_color(theme.text_dimmed)
-                                                                    .opacity(0.5)
+                                                                    .invisible()
+                                                                    .group_hover("session_row", |s| s.visible())
+                                                                    .hover(|s| s.bg(theme.divider).text_color(theme.text))
                                                                     .child("x")
                                                                     .cursor(CursorStyle::PointingHand)
-                                                                    .hover(|s| s.opacity(1.0))
-                                                                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                                    .on_click(cx.listener(move |this, _: &ClickEvent, _, cx| {
                                                                         cx.stop_propagation();
                                                                         this.delete_session(path_delete.clone(), cx);
                                                                     }))
@@ -807,6 +817,7 @@ impl Render for NumNumApp {
                                 .child(div().h(px(1.)).bg(theme.divider).my(px(4.)))
                                 .child(
                                     div()
+                                        .id("new-session-btn")
                                         .px(px(8.))
                                         .py(px(6.))
                                         .rounded_sm()
@@ -814,12 +825,14 @@ impl Render for NumNumApp {
                                         .text_color(theme.text)
                                         .cursor(CursorStyle::PointingHand)
                                         .hover(|s| s.bg(theme.divider))
+                                        .active(|s| s.bg(theme.divider))
                                         .child("New Session")
-                                        .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                        .on_click(cx.listener(|this, _: &ClickEvent, _, cx| {
                                             this.new_session(cx);
                                         }))
                                 )
                         )
+                        .occlude()
                         .on_mouse_down_out(cx.listener(|this, _, _, cx| {
                             this.burger_menu_open = false;
                             cx.notify();
