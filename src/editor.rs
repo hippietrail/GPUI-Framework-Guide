@@ -464,6 +464,19 @@ impl Editor {
         &self.content
     }
 
+    pub fn set_content(&mut self, content: String, cx: &mut Context<Self>) {
+        self.content = content;
+        self.selected_range = self.content.len()..self.content.len();
+        self.selection_reversed = false;
+        self.marked_range = None;
+        self.select_mode = None;
+        self.undo_stack.clear();
+        self.redo_stack.clear();
+        self.line_layouts.clear();
+        self.line_visual_counts.clear();
+        self.pause_blinking(cx);
+    }
+
     pub fn cursor_line_col(&self) -> (usize, usize) {
         let offset = self.cursor_offset();
         let before = &self.content[..offset];

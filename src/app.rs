@@ -1,10 +1,11 @@
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
 use gpui::{
     App, Context, CursorStyle, Entity, Focusable, MouseButton, MouseDownEvent, MouseMoveEvent,
     MouseUpEvent, Pixels, Render, ScrollDelta, ScrollHandle, ScrollWheelEvent, SharedString,
-    Window, div, point, prelude::*, px,
+    Window, div, point, prelude::*, px, svg,
 };
 
 use gpui::relative;
@@ -41,6 +42,9 @@ pub struct NumNumApp {
     title_bar: String,
     titlebar_should_move: bool,
     number_format: NumberFormat,
+    session_path: Option<PathBuf>,
+    session_list: Vec<(PathBuf, crate::session::Session)>,
+    burger_menu_open: bool,
 }
 
 impl NumNumApp {
@@ -49,6 +53,7 @@ impl NumNumApp {
         theme: Theme,
         settings: Settings,
         live_rates: Arc<Mutex<HashMap<String, f64>>>,
+        initial_session: Option<(PathBuf, String)>,
     ) -> Self {
         let font_family = settings.editor.font_family.clone();
         let font_size = settings.editor.font_size;
@@ -82,6 +87,8 @@ impl NumNumApp {
 
         let unit_table_for_eval = unit_table.clone();
         let currency_table_for_eval = currency_table.clone();
+
+        let initial_content = initial_session.as_ref().map(|(_, content)| content.clone());
 
         let editor = cx.new(|cx| {
             let mut ed = Editor::new(cx, theme_clone, font_family, font_size, None,
@@ -184,8 +191,18 @@ impl NumNumApp {
                 last_scroll_line.set(line);
                 this.autoscroll_to_line = Some(line);
             }
+
+            // Auto-save current session
+            this.save_current_session(cx);
         })
         .detach();
+
+        // Load initial session content after observer is registered so evaluation fires
+        if let Some(content) = initial_content {
+            editor.update(cx, |ed, cx| {
+                ed.set_content(content, cx);
+            });
+        }
 
         // Wire up on_save callback: settings pane -> app
         let results_pane_for_save = results_pane.clone();
@@ -267,6 +284,9 @@ impl NumNumApp {
             title_bar: settings.window.title_bar.clone(),
             titlebar_should_move: false,
             number_format: NumberFormat::from_str(&settings.editor.number_format),
+            session_path: initial_session.map(|(path, _)| path),
+            session_list: Vec::new(),
+            burger_menu_open: false,
         }
     }
 }
@@ -327,6 +347,68 @@ impl NumNumApp {
                 cx.notify();
             }
         }
+    }
+
+    fn toggle_burger_menu(&mut self, cx: &mut Context<Self>) {
+        self.burger_menu_open = !self.burger_menu_open;
+        if self.burger_menu_open {
+            self.session_list = crate::session::list_sessions();
+        }
+        cx.notify();
+    }
+
+    fn switch_session(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        self.burger_menu_open = false;
+        self.save_current_session(cx);
+        if let Some(session) = crate::session::load_session(&path) {
+            self.session_path = Some(path);
+            self.editor.update(cx, |editor, cx| {
+                editor.set_content(session.content, cx);
+            });
+        }
+        cx.notify();
+    }
+
+    fn new_session(&mut self, cx: &mut Context<Self>) {
+        self.burger_menu_open = false;
+        self.save_current_session(cx);
+        self.session_path = None;
+        self.editor.update(cx, |editor, cx| {
+            editor.set_content(String::new(), cx);
+        });
+        cx.notify();
+    }
+
+    fn save_current_session(&mut self, cx: &mut Context<Self>) {
+        let content = self.editor.read(cx).content().to_string();
+
+        if content.trim().is_empty() {
+            // Empty content: delete the session file if it exists and clear the path.
+            // This prevents accumulating empty sessions on disk.
+            if let Some(path) = self.session_path.take() {
+                let _ = std::fs::remove_file(&path);
+            }
+            return;
+        }
+
+        // Non-empty content: ensure we have a path, creating one lazily if needed.
+        let path = match &self.session_path {
+            Some(path) => path.clone(),
+            None => {
+                let path = crate::session::new_session_path();
+                self.session_path = Some(path.clone());
+                path
+            }
+        };
+
+        let mut session = crate::session::load_session(&path)
+            .unwrap_or_else(|| crate::session::Session::new(content.clone()));
+        session.content = content;
+        session.updated_at = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        crate::session::save_session(&path, &session);
     }
 }
 
@@ -494,6 +576,8 @@ impl Render for NumNumApp {
                     );
                 }
 
+                let burger_icon_path = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icons/burger.svg");
+
                 bar = bar
                     .child(
                         div()
@@ -504,7 +588,31 @@ impl Render for NumNumApp {
                             .text_color(title_color)
                             .child("NumNum"),
                     )
-                    .child(div().w(px(68.)));
+                    .child(
+                        div()
+                            .w(px(68.))
+                            .flex()
+                            .flex_row()
+                            .justify_end()
+                            .items_center()
+                            .pr(px(12.))
+                            .child(
+                                div()
+                                    .id("burger-btn")
+                                    .cursor(CursorStyle::PointingHand)
+                                    .child(
+                                        svg()
+                                            .external_path(burger_icon_path)
+                                            .size(px(14.))
+                                            .text_color(title_color)
+                                    )
+                                    .hover(|s| s.opacity(0.7))
+                                    .on_mouse_down(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                        cx.stop_propagation();
+                                        this.toggle_burger_menu(cx);
+                                    }))
+                            )
+                    );
 
                 el.child(bar)
             })
@@ -595,5 +703,86 @@ impl Render for NumNumApp {
             })
             // Status bar always visible
             .child(self.status_bar.clone())
+            // Burger menu popup — rendered last so it paints on top
+            .when(self.burger_menu_open, |el| {
+                let theme = self.theme.clone();
+                let current_path = self.session_path.clone();
+                let sessions = self.session_list.clone();
+
+                el.child(
+                    div()
+                        .id("burger-menu")
+                        .absolute()
+                        .top(titlebar_height)
+                        .right(px(8.))
+                        .w(px(240.))
+                        .max_h(px(320.))
+                        .overflow_y_scroll()
+                        .bg(theme.editor_background)
+                        .border_1()
+                        .border_color(theme.divider)
+                        .rounded_md()
+                        .child(
+                            div()
+                                .flex()
+                                .flex_col()
+                                .p(px(4.))
+                                .children(sessions.iter().map(|(path, session)| {
+                                    let is_current = current_path.as_ref() == Some(path);
+                                    let display_name = crate::session::format_display_name(&session.content);
+                                    let timestamp = crate::session::format_timestamp(session.updated_at);
+                                    let path_clone = path.clone();
+                                    div()
+                                        .px(px(8.))
+                                        .py(px(6.))
+                                        .rounded_sm()
+                                        .when(is_current, |el| el.bg(theme.selection))
+                                        .cursor(CursorStyle::PointingHand)
+                                        .hover(|s| s.bg(theme.divider))
+                                        .on_mouse_up(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                            this.switch_session(path_clone.clone(), cx);
+                                        }))
+                                        .child(
+                                            div()
+                                                .flex()
+                                                .flex_row()
+                                                .justify_between()
+                                                .items_center()
+                                                .child(
+                                                    div()
+                                                        .text_size(px(12.))
+                                                        .text_color(theme.text)
+                                                        .child(display_name)
+                                                )
+                                                .child(
+                                                    div()
+                                                        .text_size(px(10.))
+                                                        .text_color(theme.text_dimmed)
+                                                        .child(timestamp)
+                                                )
+                                        )
+                                }))
+                                .child(div().h(px(1.)).bg(theme.divider).my(px(4.)))
+                                .child(
+                                    div()
+                                        .px(px(8.))
+                                        .py(px(6.))
+                                        .rounded_sm()
+                                        .text_size(px(12.))
+                                        .text_color(theme.text)
+                                        .cursor(CursorStyle::PointingHand)
+                                        .hover(|s| s.bg(theme.divider))
+                                        .child("New Session")
+                                        .on_mouse_up(MouseButton::Left, cx.listener(|this, _, _, cx| {
+                                            this.new_session(cx);
+                                        }))
+                                )
+                        )
+                        .on_mouse_down_out(cx.listener(|this, _, _, cx| {
+                            this.burger_menu_open = false;
+                            cx.notify();
+                        }))
+                )
+            })
     }
 }

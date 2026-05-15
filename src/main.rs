@@ -2,6 +2,7 @@ mod app;
 mod editor;
 mod rates;
 mod results_pane;
+mod session;
 mod settings_pane;
 mod status_bar;
 mod theme;
@@ -102,6 +103,13 @@ fn main() {
         let settings_clone = settings.clone();
         let rates_clone = live_rates.clone();
 
+        // Load most recent session, if any. No empty sessions are kept on disk,
+        // so if none exist we start with no session file and create one lazily
+        // on first non-empty content change.
+        let sessions = session::list_sessions();
+        let initial_session = sessions.into_iter().next()
+            .map(|(path, session)| (path, session.content));
+
         // Resolve auto mode inside the window callback where we have access to window appearance
         let appearance_mode = settings.appearance.mode.clone();
         let dark_theme_name = settings.appearance.dark_theme.clone();
@@ -153,7 +161,7 @@ fn main() {
                         _ => Theme::from_theme_file(&ThemeFile::load(&dark_theme_name)),
                     };
 
-                    cx.new(|cx| NumNumApp::new(cx, actual_theme, settings_clone, rates_clone))
+                    cx.new(|cx| NumNumApp::new(cx, actual_theme, settings_clone, rates_clone, initial_session))
                 },
             )
             .expect("Failed to open window");
