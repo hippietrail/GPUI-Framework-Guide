@@ -105,15 +105,12 @@ pub fn load_session(path: &Path) -> Option<Session> {
 }
 
 pub fn format_display_name(content: &str) -> String {
-    let first = content
+    content
         .lines()
         .map(|l| l.trim())
-        .find(|l| !l.is_empty());
-    match first {
-        None => "<empty session>".to_string(),
-        Some(line) if line.len() <= 22 => line.to_string(),
-        Some(line) => format!("{}...", &line[..22]),
-    }
+        .find(|l| !l.is_empty())
+        .unwrap_or("<empty session>")
+        .to_string()
 }
 
 pub fn format_timestamp(secs: u64) -> String {
@@ -355,21 +352,13 @@ mod tests {
     #[test]
     fn test_format_display_name_long_line() {
         let long = "this is a very long first line of content";
-        assert_eq!(format_display_name(long), "this is a very long fi...");
+        assert_eq!(format_display_name(long), "this is a very long first line of content");
     }
 
     #[test]
     fn test_format_display_name_multiline_skips_blanks() {
         let text = "\n\n  \nactual content\nmore stuff";
         assert_eq!(format_display_name(text), "actual content");
-    }
-
-    #[test]
-    fn test_format_display_name_exact_boundary() {
-        let exact = "1234567890123456789012"; // 22 chars
-        assert_eq!(format_display_name(exact), exact);
-        let over = "12345678901234567890123"; // 23 chars
-        assert_eq!(format_display_name(over), "1234567890123456789012...");
     }
 
     #[test]
