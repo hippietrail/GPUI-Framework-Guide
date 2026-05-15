@@ -379,6 +379,15 @@ impl NumNumApp {
         cx.notify();
     }
 
+    fn delete_session(&mut self, path: PathBuf, cx: &mut Context<Self>) {
+        if self.session_path.as_ref() == Some(&path) {
+            return;
+        }
+        let _ = std::fs::remove_file(&path);
+        self.session_list.retain(|(p, _)| p != &path);
+        cx.notify();
+    }
+
     fn save_current_session(&mut self, cx: &mut Context<Self>) {
         let content = self.editor.read(cx).content().to_string();
 
@@ -392,6 +401,7 @@ impl NumNumApp {
         }
 
         // Non-empty content: ensure we have a path, creating one lazily if needed.
+        let is_new = self.session_path.is_none();
         let path = match &self.session_path {
             Some(path) => path.clone(),
             None => {
@@ -403,12 +413,18 @@ impl NumNumApp {
 
         let mut session = crate::session::load_session(&path)
             .unwrap_or_else(|| crate::session::Session::new(content.clone()));
-        session.content = content;
-        session.updated_at = std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_secs();
-        crate::session::save_session(&path, &session);
+
+        // Only update timestamp when content actually changed. This preserves
+        // the original edit time when reopening the app with no new input.
+        // New files are always saved so the path is valid on disk.
+        if is_new || session.content != content {
+            session.content = content;
+            session.updated_at = std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap_or_default()
+                .as_secs();
+            crate::session::save_session(&path, &session);
+        }
     }
 }
 
@@ -731,17 +747,20 @@ impl Render for NumNumApp {
                                     let is_current = current_path.as_ref() == Some(path);
                                     let display_name = crate::session::format_display_name(&session.content);
                                     let timestamp = crate::session::format_timestamp(session.updated_at);
-                                    let path_clone = path.clone();
+                                    let path_switch = path.clone();
+                                    let path_delete = path.clone();
                                     div()
                                         .px(px(8.))
                                         .py(px(6.))
                                         .rounded_sm()
                                         .when(is_current, |el| el.bg(theme.selection))
-                                        .cursor(CursorStyle::PointingHand)
-                                        .hover(|s| s.bg(theme.divider))
-                                        .on_mouse_up(MouseButton::Left, cx.listener(move |this, _, _, cx| {
-                                            this.switch_session(path_clone.clone(), cx);
-                                        }))
+                                        .when(!is_current, |el| {
+                                            el.cursor(CursorStyle::PointingHand)
+                                                .hover(|s| s.bg(theme.divider))
+                                                .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                    this.switch_session(path_switch.clone(), cx);
+                                                }))
+                                        })
                                         .child(
                                             div()
                                                 .flex()
@@ -756,9 +775,32 @@ impl Render for NumNumApp {
                                                 )
                                                 .child(
                                                     div()
-                                                        .text_size(px(10.))
-                                                        .text_color(theme.text_dimmed)
-                                                        .child(timestamp)
+                                                        .flex()
+                                                        .flex_row()
+                                                        .items_center()
+                                                        .gap(px(6.))
+                                                        .child(
+                                                            div()
+                                                                .text_size(px(10.))
+                                                                .text_color(theme.text_dimmed)
+                                                                .child(timestamp)
+                                                        )
+                                                        .when(!is_current, |el| {
+                                                            el.child(
+                                                                div()
+                                                                    .px(px(2.))
+                                                                    .text_size(px(10.))
+                                                                    .text_color(theme.text_dimmed)
+                                                                    .opacity(0.5)
+                                                                    .child("x")
+                                                                    .cursor(CursorStyle::PointingHand)
+                                                                    .hover(|s| s.opacity(1.0))
+                                                                    .on_mouse_down(MouseButton::Left, cx.listener(move |this, _, _, cx| {
+                                                                        cx.stop_propagation();
+                                                                        this.delete_session(path_delete.clone(), cx);
+                                                                    }))
+                                                            )
+                                                        })
                                                 )
                                         )
                                 }))

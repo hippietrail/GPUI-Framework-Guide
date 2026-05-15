@@ -197,6 +197,7 @@ mod tests {
             }
             None
         } else {
+            let is_new = session_path.is_none();
             let path = match session_path {
                 Some(p) => p.clone(),
                 None => {
@@ -207,9 +208,13 @@ mod tests {
             };
             let mut session = load_session(&path)
                 .unwrap_or_else(|| Session::new(content.to_string()));
-            session.content = content.to_string();
-            session.updated_at = now_secs();
-            save_session(&path, &session);
+            // Always save new files. For existing files, only save when content
+            // changed so timestamp reflects actual edit time, not reopen time.
+            if is_new || session.content != content {
+                session.content = content.to_string();
+                session.updated_at = now_secs();
+                save_session(&path, &session);
+            }
             Some(path)
         }
     }
@@ -593,6 +598,98 @@ mod tests {
         let b = new_session_path_in_dir(&dir);
         assert_ne!(a, b);
         assert!(b.to_string_lossy().contains("numnum_session_"));
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_timestamp_not_updated_on_identical_save() {
+        let dir = test_dir();
+        let mut path: Option<PathBuf> = None;
+
+        // Initial save: content changes, timestamp set.
+        let p = simulate_save(&mut path, "2 + 2", &dir).unwrap();
+        let first = load_session(&p).unwrap();
+        assert_eq!(first.content, "2 + 2");
+
+        // Sleep to ensure timestamp would differ if updated.
+        std::thread::sleep(std::time::Duration::from_secs(2));
+
+        // Re-save identical content: timestamp must stay the same.
+        let _ = simulate_save(&mut path, "2 + 2", &dir).unwrap();
+        let second = load_session(&p).unwrap();
+        assert_eq!(second.content, "2 + 2");
+        assert_eq!(second.updated_at, first.updated_at);
+
+        cleanup(&dir);
+    }
+
+    // Simulates App::delete_session for testing.
+    fn simulate_delete(
+        current_path: &Option<PathBuf>,
+        path_to_delete: &PathBuf,
+        _dir: &Path,
+    ) -> bool {
+        if current_path.as_ref() == Some(path_to_delete) {
+            return false;
+        }
+        let _ = fs::remove_file(path_to_delete);
+        true
+    }
+
+    #[test]
+    fn test_delete_non_current_removes_file() {
+        let dir = test_dir();
+        let mut path_a: Option<PathBuf> = None;
+        let mut path_b: Option<PathBuf> = None;
+
+        let pa = simulate_save(&mut path_a, "session A", &dir).unwrap();
+        let pb = simulate_save(&mut path_b, "session B", &dir).unwrap();
+
+        // Current session is A, delete B.
+        let deleted = simulate_delete(&path_a, &pb, &dir);
+        assert!(deleted);
+        assert!(!pb.exists());
+        assert!(pa.exists());
+        assert_eq!(list_sessions_in_dir(&dir).len(), 1);
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_delete_current_is_guarded() {
+        let dir = test_dir();
+        let mut path: Option<PathBuf> = None;
+
+        let p = simulate_save(&mut path, "current session", &dir).unwrap();
+
+        // Attempt to delete current session.
+        let deleted = simulate_delete(&path, &p, &dir);
+        assert!(!deleted);
+        assert!(p.exists());
+        assert_eq!(list_sessions_in_dir(&dir).len(), 1);
+
+        cleanup(&dir);
+    }
+
+    #[test]
+    fn test_delete_updates_list() {
+        let dir = test_dir();
+        let mut path_a: Option<PathBuf> = None;
+        let mut path_b: Option<PathBuf> = None;
+        let mut path_c: Option<PathBuf> = None;
+
+        let pa = simulate_save(&mut path_a, "A", &dir).unwrap();
+        let _pb = simulate_save(&mut path_b, "B", &dir).unwrap();
+        let pc = simulate_save(&mut path_c, "C", &dir).unwrap();
+
+        // Current is A, delete C.
+        let _ = simulate_delete(&path_a, &pc, &dir);
+
+        let list = list_sessions_in_dir(&dir);
+        assert_eq!(list.len(), 2);
+        assert!(list.iter().any(|(p, _)| p == &pa));
+        assert!(!list.iter().any(|(p, _)| p == &pc));
+
         cleanup(&dir);
     }
 }
