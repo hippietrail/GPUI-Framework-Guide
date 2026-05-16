@@ -66,7 +66,7 @@ Your work is automatically saved. Every calculation lives in a named session tha
 - Hover over a session in the list to reveal a close button
 - Empty sessions are cleaned up automatically so they don't clutter the list
 
-![Session Menu](assets/session_menu.png)
+![Session Menu](assets/sessions.png)
 
 ## Looks
 
