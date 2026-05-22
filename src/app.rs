@@ -592,8 +592,6 @@ impl Render for NumNumApp {
                     );
                 }
 
-                let burger_icon_path = concat!(env!("CARGO_MANIFEST_DIR"), "/assets/icons/burger.svg");
-
                 bar = bar
                     .child(
                         div()
@@ -618,7 +616,7 @@ impl Render for NumNumApp {
                                     .cursor(CursorStyle::PointingHand)
                                     .child(
                                         svg()
-                                            .external_path(burger_icon_path)
+                                            .path("icons/burger.svg")
                                             .size(px(14.))
                                             .text_color(title_color)
                                     )

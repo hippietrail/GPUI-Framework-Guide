@@ -1,4 +1,5 @@
 mod app;
+mod assets;
 mod editor;
 mod rates;
 mod results_pane;
@@ -66,7 +67,9 @@ fn main() {
         });
     }
 
-    application().run(move |cx: &mut App| {
+    application()
+        .with_assets(assets::Assets)
+        .run(move |cx: &mut App| {
         let bounds = Bounds::centered(None, size(px(settings.window.width), px(settings.window.height)), cx);
 
         // Bind key bindings for the Editor context
