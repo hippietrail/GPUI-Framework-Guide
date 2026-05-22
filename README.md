@@ -100,18 +100,20 @@ Prebuilt packages for every platform are attached to each [release](https://gith
 
 ### Linux
 
+Packages are built for both `x86_64` and `aarch64`. Pick the file matching your machine.
+
 ```sh
 # Debian / Ubuntu
-sudo apt install ./numnum_*_amd64.deb
+sudo apt install ./numnum_*.deb
 
 # Fedora / RHEL / openSUSE
-sudo dnf install ./numnum-*.x86_64.rpm
+sudo dnf install ./numnum-*.rpm
 
-# Arch (AUR)
-paru -S numnum-bin
+# Arch / Arch Linux ARM
+sudo pacman -U ./numnum-bin-*.pkg.tar.zst
 ```
 
-Or download `numnum-x86_64-unknown-linux-gnu.tar.xz` and put the `numnum` binary on your `PATH`.
+Or download the `numnum-*-unknown-linux-gnu.tar.xz` archive for your architecture and put the `numnum` binary on your `PATH`.
 
 ### macOS
 
@@ -119,7 +121,7 @@ Download `NumNum-<version>.dmg`, open it, and drag NumNum to Applications. The b
 
 ### Windows
 
-Download `numnum-x86_64-pc-windows-msvc.zip`, extract it, and run `numnum.exe`.
+Download `NumNum-<version>-setup.exe` and run it. It installs to Program Files with a Start Menu shortcut and an uninstaller. A portable `numnum-x86_64-pc-windows-msvc.zip` is also attached if you would rather not install.
 
 ### FreeBSD
 
@@ -233,11 +235,7 @@ sudo pkg install cmake llvm git alsa-lib libX11 sqlite3
 ./build_install_linux_bsd.sh
 ```
 
-Set this in your shell profile to avoid GPUI performance issues on FreeBSD:
-
-```sh
-export RUST_LIB_BACKTRACE=0
-```
+NumNum sets `RUST_LIB_BACKTRACE=0` itself on FreeBSD to work around a GPUI performance issue, so no shell setup is needed.
 
 The install script builds the release binary, copies it to `~/.local/bin/`, sets up the desktop entry and icon, and optionally configures Hyprland or Niri window rules.
 

@@ -1,29 +1,32 @@
 # Maintainer: Rudrabhoj Bhati <hello@rudrabhoj.com>
 #
-# Binary AUR package. It downloads the prebuilt x86_64 Linux archive attached
-# to the matching GitHub release. Bump pkgver and refresh the sha256sums with
-# `updpkgsums` for each release.
+# Binary package. It downloads the prebuilt Linux archive for the build
+# architecture from the matching GitHub release, so it works for both Arch
+# (x86_64) and Arch Linux ARM (aarch64). Bump pkgver and refresh the
+# sha256sums with `updpkgsums` for each release.
 pkgname=numnum-bin
 _pkgname=numnum
-pkgver=0.2.0
+pkgver=0.2.1
 pkgrel=1
 pkgdesc="A text editor that does math - units, currencies and percentages in plain language"
-arch=('x86_64')
+arch=('x86_64' 'aarch64')
 url="https://github.com/rudrabhoj/numnum"
 license=('GPL-2.0-only')
 provides=('numnum')
 conflicts=('numnum')
 options=('!strip')
-source=("$_pkgname-$pkgver.tar.xz::https://github.com/rudrabhoj/numnum/releases/download/v$pkgver/numnum-x86_64-unknown-linux-gnu.tar.xz"
-        "numnum.desktop::https://raw.githubusercontent.com/rudrabhoj/numnum/v$pkgver/packaging/numnum.desktop"
+source=("numnum.desktop::https://raw.githubusercontent.com/rudrabhoj/numnum/v$pkgver/packaging/numnum.desktop"
         "numnum.svg::https://raw.githubusercontent.com/rudrabhoj/numnum/v$pkgver/assets/icons/numnum.svg")
+source_x86_64=("$_pkgname-$pkgver-x86_64.tar.xz::https://github.com/rudrabhoj/numnum/releases/download/v$pkgver/numnum-x86_64-unknown-linux-gnu.tar.xz")
+source_aarch64=("$_pkgname-$pkgver-aarch64.tar.xz::https://github.com/rudrabhoj/numnum/releases/download/v$pkgver/numnum-aarch64-unknown-linux-gnu.tar.xz")
 sha256sums=('SKIP'
-            'SKIP'
             'SKIP')
+sha256sums_x86_64=('SKIP')
+sha256sums_aarch64=('SKIP')
 
 package() {
-    # cargo-dist archive layout can place the binary at the root or in a
-    # versioned subdir; locate it either way.
+    # The archive layout can place the binary at the root or in a versioned
+    # subdir; locate it either way.
     local bin
     bin=$(find "$srcdir" -type f -name numnum -perm -u+x | head -1)
     install -Dm755 "$bin" "$pkgdir/usr/bin/numnum"

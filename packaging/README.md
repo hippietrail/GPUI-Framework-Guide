@@ -5,13 +5,13 @@ desktop OS. The build output lands in `dist/`, which is gitignored.
 
 | Artifact | Platform | Built by | Where |
 |----------|----------|----------|-------|
-| `.deb` | Debian, Ubuntu | `cargo-deb` | `release.yml` / local |
-| `.rpm` | Fedora, RHEL, openSUSE | `cargo-generate-rpm` | `release.yml` / local |
-| `.tar.xz` | Linux | `tar` | `release.yml` / local |
+| `.deb` (x86_64, aarch64) | Debian, Ubuntu | `cargo-deb` | `release.yml` / local |
+| `.rpm` (x86_64, aarch64) | Fedora, RHEL, openSUSE | `cargo-generate-rpm` | `release.yml` / local |
+| `.tar.xz` (x86_64, aarch64) | Linux | `tar` | `release.yml` / local |
+| `.pkg.tar.zst` (x86_64, aarch64) | Arch, Arch Linux ARM | `makepkg` + `aur/PKGBUILD` | `release.yml` |
 | `.dmg` (universal) | macOS | `packaging/macos/build-app.sh` | `release.yml` / local |
-| `.zip` | Windows | `release.yml` | `release.yml` |
+| `.exe` installer + `.zip` | Windows | NSIS | `release.yml` |
 | `.pkg` + `.tar.xz` | FreeBSD | `packaging/freebsd/build-pkg.sh` | `release.yml` / local |
-| `PKGBUILD` (`numnum-bin`) | Arch, AUR | `packaging/aur/PKGBUILD` | published manually |
 
 Every package installs the same three files: the `numnum` binary, a
 `numnum.desktop` entry, and the `numnum.svg` launcher icon. The icons drawn
@@ -37,8 +37,9 @@ The `.deb`/`.rpm` file layout lives in `[package.metadata.deb]` and
 ## CI
 
 `.github/workflows/release.yml` runs on every `v*` tag. It creates the GitHub
-release, then builds each platform on its own runner (Linux, macOS and Windows
-natively, FreeBSD inside a VM) and attaches the artifacts. The repo is public,
+release, then builds each platform on its own runner: Linux x86_64 and
+aarch64, macOS and Windows natively, Arch packages in a container, FreeBSD
+inside a VM. Every artifact is attached to the release. The repo is public,
 so Actions minutes are unlimited; every job finishes well under the 6h cap.
 
 ## Cutting a release
@@ -47,8 +48,9 @@ so Actions minutes are unlimited; every job finishes well under the 6h cap.
    `packaging/aur/PKGBUILD`. Commit.
 2. Tag and push: `git tag v0.2.1 && git push origin v0.2.1`.
 3. `release.yml` builds and attaches every artifact to the release.
-4. For the AUR: run `updpkgsums` in `packaging/aur/`, regenerate `.SRCINFO`,
-   and push to the `numnum-bin` AUR repository.
+4. Optional: the release already ships prebuilt `.pkg.tar.zst` files. To also
+   list NumNum on the AUR, run `updpkgsums` in `packaging/aur/`, regenerate
+   `.SRCINFO`, and push to the `numnum-bin` AUR repository.
 
 ## Building locally
 

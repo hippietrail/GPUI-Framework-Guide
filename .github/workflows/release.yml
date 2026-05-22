@@ -1,6 +1,7 @@
 # Builds NumNum for every platform on a version tag and attaches the
-# artifacts to a GitHub release: Linux (.deb/.rpm/tarball), macOS (universal
-# .dmg), Windows (.zip) and FreeBSD (.pkg/tarball).
+# artifacts to a GitHub release: Linux x86_64 and aarch64 (.deb/.rpm/tarball),
+# Arch (.pkg.tar.zst), macOS (universal .dmg), Windows (installer + zip) and
+# FreeBSD (.pkg/tarball).
 #
 # The repository is public, so Actions minutes are unlimited; the only hard
 # limit is the 6h per-job cap, which no job here comes close to.
@@ -29,9 +30,19 @@ jobs:
             --verify-tag || echo "release already exists, continuing"
 
   linux:
-    name: Linux (deb, rpm, tarball)
+    name: Linux ${{ matrix.arch }} (deb, rpm, tarball)
     needs: create-release
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
       - uses: dtolnay/rust-toolchain@stable
@@ -55,7 +66,7 @@ jobs:
           cargo deb --no-build --output dist/out/
           cargo generate-rpm
           cp target/generate-rpm/*.rpm dist/out/
-          d=numnum-x86_64-unknown-linux-gnu
+          d=numnum-${{ matrix.target }}
           mkdir -p "$d"
           cp target/release/numnum README.md LICENSE "$d"/
           tar -cJf "dist/out/$d.tar.xz" "$d"
@@ -63,6 +74,38 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh release upload "$GITHUB_REF_NAME" dist/out/* --clobber
+
+  arch:
+    name: Arch ${{ matrix.arch }} package
+    needs: [create-release, linux]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - arch: x86_64
+            runner: ubuntu-latest
+            container: archlinux:latest
+          - arch: aarch64
+            runner: ubuntu-24.04-arm
+            container: lopsided/archlinux:latest
+    runs-on: ${{ matrix.runner }}
+    container: ${{ matrix.container }}
+    steps:
+      - name: Install tools
+        run: pacman -Syu --noconfirm --needed base-devel git github-cli curl
+      - uses: actions/checkout@v4
+      - name: Build .pkg.tar.zst
+        run: |
+          useradd -m builder
+          cp packaging/aur/PKGBUILD /home/builder/PKGBUILD
+          chown -R builder:builder /home/builder
+          sudo -u builder bash -lc 'cd ~ && makepkg -f --noconfirm --skipinteg'
+          mkdir -p dist/out
+          cp /home/builder/*.pkg.tar.zst dist/out/
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/out/*.pkg.tar.zst --clobber
 
   macos:
     name: macOS (universal dmg)
@@ -82,7 +125,7 @@ jobs:
         run: gh release upload "$GITHUB_REF_NAME" dist/out/*.dmg --clobber
 
   windows:
-    name: Windows (zip)
+    name: Windows (installer, zip)
     needs: create-release
     runs-on: windows-latest
     steps:
@@ -91,17 +134,28 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - name: Build release binary
         run: cargo build --release --locked
-      - name: Package zip
+      - name: Build installer and portable zip
         shell: pwsh
         run: |
-          $d = "numnum-x86_64-pc-windows-msvc"
-          New-Item -ItemType Directory -Force dist/out, $d | Out-Null
-          Copy-Item target/release/numnum.exe, README.md, LICENSE $d
-          Compress-Archive -Path $d -DestinationPath "dist/out/$d.zip" -Force
+          $ver = "${env:GITHUB_REF_NAME}".TrimStart('v')
+          New-Item -ItemType Directory -Force dist/out, staging | Out-Null
+          Copy-Item target/release/numnum.exe, README.md, LICENSE staging
+          Copy-Item packaging/windows/numnum.ico, packaging/windows/numnum.nsi staging
+          Compress-Archive -Path staging/numnum.exe, staging/README.md, staging/LICENSE `
+            -DestinationPath dist/out/numnum-x86_64-pc-windows-msvc.zip -Force
+          choco install nsis --no-progress -y
+          Push-Location staging
+          & "C:\Program Files (x86)\NSIS\makensis.exe" "/DVERSION=$ver" numnum.nsi
+          Pop-Location
+          Move-Item staging/numnum-setup.exe "dist/out/NumNum-$ver-setup.exe"
       - name: Attach to release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload $env:GITHUB_REF_NAME "dist/out/numnum-x86_64-pc-windows-msvc.zip" --clobber
+        run: |
+          $ver = "${env:GITHUB_REF_NAME}".TrimStart('v')
+          gh release upload $env:GITHUB_REF_NAME `
+            "dist/out/numnum-x86_64-pc-windows-msvc.zip" `
+            "dist/out/NumNum-$ver-setup.exe" --clobber
 
   freebsd:
     name: FreeBSD (pkg, tarball)

@@ -18,6 +18,14 @@ use crate::settings_pane::EscapeSettings;
 use crate::theme::Theme;
 
 fn main() {
+    // GPUI on FreeBSD degrades badly when libstd backtrace capture is on.
+    // Force it off before any thread starts so the binary behaves the same
+    // however it is launched.
+    #[cfg(target_os = "freebsd")]
+    unsafe {
+        std::env::set_var("RUST_LIB_BACKTRACE", "0");
+    }
+
     let settings = Settings::load();
     numnum_core::config::ensure_default_themes();
 
