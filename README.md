@@ -94,6 +94,74 @@ scoop install Maple-Mono-NF
 
 Or grab it from the [releases page](https://github.com/subframe7536/maple-font/releases). Any monospace font works, but Maple Mono NF is what NumNum is designed around. You can change the font in settings.
 
+## Install
+
+Prebuilt packages for every platform are attached to each [release](https://github.com/rudrabhoj/numnum/releases).
+
+### Linux
+
+```sh
+# Debian / Ubuntu
+sudo apt install ./numnum_*_amd64.deb
+
+# Fedora / RHEL / openSUSE
+sudo dnf install ./numnum-*.x86_64.rpm
+
+# Arch (AUR)
+paru -S numnum-bin
+```
+
+Or download `numnum-x86_64-unknown-linux-gnu.tar.xz` and put the `numnum` binary on your `PATH`.
+
+### macOS
+
+Download `NumNum-<version>.dmg`, open it, and drag NumNum to Applications. The binary is universal, so one download runs on both Intel and Apple Silicon. It is unsigned, so the first launch needs a Control-click then Open.
+
+### Windows
+
+Download `numnum-x86_64-pc-windows-msvc.zip`, extract it, and run `numnum.exe`.
+
+### FreeBSD
+
+```sh
+sudo pkg install ./numnum-*.pkg
+```
+
+Or use the `numnum-x86_64-unknown-freebsd.tar.xz` archive.
+
+## Window manager tips (Hyprland, Niri)
+
+NumNum is a small utility window. On a tiling Wayland compositor it feels best floating, borderless, and pinned, so it acts like a quick scratchpad instead of claiming a tile. It sets its Wayland `app-id` (and X11 `WM_CLASS`) to `numnum`, which is what these rules match on.
+
+### Hyprland
+
+Add to `~/.config/hypr/hyprland.conf`:
+
+```
+# NumNum calculator
+windowrule = float on, match:class numnum
+windowrule = pin on, match:class numnum
+windowrule = border_size 0, match:class numnum
+```
+
+### Niri
+
+Add to `~/.config/niri/config.kdl`:
+
+```kdl
+// NumNum calculator
+window-rule {
+    match app-id="numnum"
+    open-floating true
+    border {
+        off
+    }
+    focus-ring {
+        off
+    }
+}
+```
+
 ## Building from source
 
 ### You'll need

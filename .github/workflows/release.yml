@@ -1,0 +1,129 @@
+# Builds NumNum for every platform on a version tag and attaches the
+# artifacts to a GitHub release: Linux (.deb/.rpm/tarball), macOS (universal
+# .dmg), Windows (.zip) and FreeBSD (.pkg/tarball).
+#
+# The repository is public, so Actions minutes are unlimited; the only hard
+# limit is the 6h per-job cap, which no job here comes close to.
+name: release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "NumNum $GITHUB_REF_NAME" \
+            --generate-notes \
+            --verify-tag || echo "release already exists, continuing"
+
+  linux:
+    name: Linux (deb, rpm, tarball)
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake clang pkg-config \
+            libasound2-dev libfontconfig-dev libssl-dev \
+            libwayland-dev libx11-xcb-dev libxkbcommon-x11-dev \
+            libxcb1-dev libzstd-dev libsqlite3-dev libvulkan-dev \
+            libva-dev libglib2.0-dev
+      - name: Install packaging tools
+        run: cargo install cargo-deb cargo-generate-rpm --locked
+      - name: Build release binary
+        run: cargo build --release --locked
+      - name: Build packages
+        run: |
+          mkdir -p dist/out
+          cargo deb --no-build --output dist/out/
+          cargo generate-rpm
+          cp target/generate-rpm/*.rpm dist/out/
+          d=numnum-x86_64-unknown-linux-gnu
+          mkdir -p "$d"
+          cp target/release/numnum README.md LICENSE "$d"/
+          tar -cJf "dist/out/$d.tar.xz" "$d"
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/out/* --clobber
+
+  macos:
+    name: macOS (universal dmg)
+    needs: create-release
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install icon tooling
+        run: brew install librsvg
+      - name: Build universal app and dmg
+        run: sh packaging/macos/build-app.sh
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "$GITHUB_REF_NAME" dist/out/*.dmg --clobber
+
+  windows:
+    name: Windows (zip)
+    needs: create-release
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Build release binary
+        run: cargo build --release --locked
+      - name: Package zip
+        shell: pwsh
+        run: |
+          $d = "numnum-x86_64-pc-windows-msvc"
+          New-Item -ItemType Directory -Force dist/out, $d | Out-Null
+          Copy-Item target/release/numnum.exe, README.md, LICENSE $d
+          Compress-Archive -Path $d -DestinationPath "dist/out/$d.zip" -Force
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload $env:GITHUB_REF_NAME "dist/out/numnum-x86_64-pc-windows-msvc.zip" --clobber
+
+  freebsd:
+    name: FreeBSD (pkg, tarball)
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build pkg and tarball in a FreeBSD VM
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.2"
+          usesh: true
+          prepare: |
+            pkg install -y rust git pkgconf cmake llvm \
+              wayland libxkbcommon vulkan-loader mesa-dri \
+              fontconfig freetype2 alsa-lib sqlite3
+          run: |
+            sh packaging/freebsd/build-pkg.sh
+      - name: Attach to release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release upload "$GITHUB_REF_NAME" \
+            dist/out/numnum-*.pkg \
+            dist/out/numnum-x86_64-unknown-freebsd.tar.xz --clobber

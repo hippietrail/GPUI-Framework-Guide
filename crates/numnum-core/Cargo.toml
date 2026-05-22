@@ -3,4 +3,8 @@ name = "numnum-core"
 version = "0.1.0"
 edition = "2024"
 
+# Internal library crate; its `eval` helper binary is not a shippable app.
+[package.metadata.dist]
+dist = false
+
 [dependencies]

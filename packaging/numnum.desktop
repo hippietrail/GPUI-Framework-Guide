@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=NumNum
+GenericName=Calculator
+Comment=A text editor that does math
+Exec=numnum
+Icon=numnum
+Terminal=false
+Categories=Utility;Calculator;Math;
+Keywords=calculator;math;units;currency;conversion;
+StartupWMClass=numnum
