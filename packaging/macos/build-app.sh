@@ -16,7 +16,7 @@ command -v cargo >/dev/null || { echo "cargo not found"; exit 1; }
 VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -1)
 OUT="$ROOT/dist/out"
 APP="$OUT/NumNum.app"
-DMG="$OUT/NumNum-$VERSION.dmg"
+DMG="$OUT/NumNum-$VERSION-macos.dmg"
 mkdir -p "$OUT"
 
 echo "==> Building both architectures"

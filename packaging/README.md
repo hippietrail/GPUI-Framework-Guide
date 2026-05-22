@@ -17,6 +17,9 @@ Every package installs the same three files: the `numnum` binary, a
 `numnum.desktop` entry, and the `numnum.svg` launcher icon. The icons drawn
 inside the app are embedded in the binary, so the binary is relocatable.
 
+Release assets are all named `NumNum-<version>-<os>-<arch>.<ext>`; the macOS
+build is universal, so it omits the arch.
+
 ## Layout
 
 ```
@@ -58,14 +61,14 @@ Each format must be built on its own OS - the GUI stack (GPUI, wgpu,
 Wayland/Vulkan) is not practical to cross-compile.
 
 ```sh
-# Linux: .deb, .rpm, tarball  ->  dist/out/
+# Linux: .deb and .rpm  ->  dist/out/
 cargo install cargo-deb cargo-generate-rpm
 sh packaging/linux/build-deb-rpm.sh
 
-# macOS: universal NumNum.app and NumNum-<ver>.dmg  ->  dist/out/
+# macOS: universal .app and .dmg  ->  dist/out/
 sh packaging/macos/build-app.sh
 
-# FreeBSD: numnum-<ver>.pkg and a tarball  ->  dist/out/
+# FreeBSD: .pkg and tarball  ->  dist/out/
 sh packaging/freebsd/build-pkg.sh
 ```
 

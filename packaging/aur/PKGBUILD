@@ -6,7 +6,7 @@
 # sha256sums with `updpkgsums` for each release.
 pkgname=numnum-bin
 _pkgname=numnum
-pkgver=0.2.1
+pkgver=0.2.2
 pkgrel=1
 pkgdesc="A text editor that does math - units, currencies and percentages in plain language"
 arch=('x86_64' 'aarch64')
@@ -17,16 +17,15 @@ conflicts=('numnum')
 options=('!strip')
 source=("numnum.desktop::https://raw.githubusercontent.com/rudrabhoj/numnum/v$pkgver/packaging/numnum.desktop"
         "numnum.svg::https://raw.githubusercontent.com/rudrabhoj/numnum/v$pkgver/assets/icons/numnum.svg")
-source_x86_64=("$_pkgname-$pkgver-x86_64.tar.xz::https://github.com/rudrabhoj/numnum/releases/download/v$pkgver/numnum-x86_64-unknown-linux-gnu.tar.xz")
-source_aarch64=("$_pkgname-$pkgver-aarch64.tar.xz::https://github.com/rudrabhoj/numnum/releases/download/v$pkgver/numnum-aarch64-unknown-linux-gnu.tar.xz")
+source_x86_64=("NumNum-$pkgver-linux-x86_64.tar.xz::https://github.com/rudrabhoj/numnum/releases/download/v$pkgver/NumNum-$pkgver-linux-x86_64.tar.xz")
+source_aarch64=("NumNum-$pkgver-linux-aarch64.tar.xz::https://github.com/rudrabhoj/numnum/releases/download/v$pkgver/NumNum-$pkgver-linux-aarch64.tar.xz")
 sha256sums=('SKIP'
             'SKIP')
 sha256sums_x86_64=('SKIP')
 sha256sums_aarch64=('SKIP')
 
 package() {
-    # The archive layout can place the binary at the root or in a versioned
-    # subdir; locate it either way.
+    # The archive contains a versioned subdir; locate the binary inside it.
     local bin
     bin=$(find "$srcdir" -type f -name numnum -perm -u+x | head -1)
     install -Dm755 "$bin" "$pkgdir/usr/bin/numnum"

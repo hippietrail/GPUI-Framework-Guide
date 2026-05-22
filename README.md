@@ -96,40 +96,40 @@ Or grab it from the [releases page](https://github.com/subframe7536/maple-font/r
 
 ## Install
 
-Prebuilt packages for every platform are attached to each [release](https://github.com/rudrabhoj/numnum/releases).
+Prebuilt packages for every platform are attached to each [release](https://github.com/rudrabhoj/numnum/releases). Every file is named the same way: `NumNum-<version>-<os>-<arch>.<ext>`.
 
 ### Linux
 
-Packages are built for both `x86_64` and `aarch64`. Pick the file matching your machine.
+Linux packages are built for both `x86_64` and `aarch64`. Pick the file matching your machine.
 
 ```sh
 # Debian / Ubuntu
-sudo apt install ./numnum_*.deb
+sudo apt install ./NumNum-*-linux-x86_64.deb
 
 # Fedora / RHEL / openSUSE
-sudo dnf install ./numnum-*.rpm
+sudo dnf install ./NumNum-*-linux-x86_64.rpm
 
 # Arch / Arch Linux ARM
-sudo pacman -U ./numnum-bin-*.pkg.tar.zst
+sudo pacman -U ./NumNum-*-archlinux-x86_64.pkg.tar.zst
 ```
 
-Or download the `numnum-*-unknown-linux-gnu.tar.xz` archive for your architecture and put the `numnum` binary on your `PATH`.
+Or download `NumNum-<version>-linux-<arch>.tar.xz` and put the `numnum` binary on your `PATH`.
 
 ### macOS
 
-Download `NumNum-<version>.dmg`, open it, and drag NumNum to Applications. The binary is universal, so one download runs on both Intel and Apple Silicon. It is unsigned, so the first launch needs a Control-click then Open.
+Download `NumNum-<version>-macos.dmg`, open it, and drag NumNum to Applications. The binary is universal, so one download runs on both Intel and Apple Silicon. It is unsigned, so the first launch needs a Control-click then Open.
 
 ### Windows
 
-Download `NumNum-<version>-setup.exe` and run it. It installs to Program Files with a Start Menu shortcut and an uninstaller. A portable `numnum-x86_64-pc-windows-msvc.zip` is also attached if you would rather not install.
+Download `NumNum-<version>-windows-x86_64.exe` and run it. It installs to Program Files with a Start Menu shortcut and an uninstaller. A portable `NumNum-<version>-windows-x86_64.zip` is also attached if you would rather not install.
 
 ### FreeBSD
 
 ```sh
-sudo pkg install ./numnum-*.pkg
+sudo pkg install ./NumNum-*-freebsd-x86_64.pkg
 ```
 
-Or use the `numnum-x86_64-unknown-freebsd.tar.xz` archive.
+Or use the `NumNum-<version>-freebsd-x86_64.tar.xz` archive.
 
 ## Window manager tips (Hyprland, Niri)
 

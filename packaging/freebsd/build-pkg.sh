@@ -57,15 +57,16 @@ echo "==> Generating +MANIFEST"
 
 echo "==> pkg create"
 pkg create -o "$OUT" -r "$STAGE" -m "$META" -p packaging/freebsd/pkg-plist
+mv "$OUT/numnum-$VERSION.pkg" "$OUT/NumNum-$VERSION-freebsd-x86_64.pkg"
 
 echo "==> Building plain binary tarball"
-TARDIR="$ROOT/target/freebsd-pkg/numnum-$VERSION-x86_64-unknown-freebsd"
+TARDIR="$ROOT/target/freebsd-pkg/NumNum-$VERSION-freebsd-x86_64"
 rm -rf "$TARDIR"
 mkdir -p "$TARDIR"
 install -m 755 target/release/numnum "$TARDIR/numnum"
 install -m 644 README.md LICENSE "$TARDIR/"
-tar -cJf "$OUT/numnum-x86_64-unknown-freebsd.tar.xz" \
+tar -cJf "$OUT/NumNum-$VERSION-freebsd-x86_64.tar.xz" \
     -C "$(dirname "$TARDIR")" "$(basename "$TARDIR")"
 
 echo "==> Done:"
-ls -la "$OUT"/numnum-*.pkg "$OUT"/numnum-x86_64-unknown-freebsd.tar.xz
+ls -la "$OUT"/NumNum-"$VERSION"-freebsd-x86_64.*
