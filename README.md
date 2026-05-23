@@ -117,11 +117,27 @@ Or download `NumNum-<version>-linux-<arch>.tar.xz` and put the `numnum` binary o
 
 ### macOS
 
-Download `NumNum-<version>-macos.dmg`, open it, and drag NumNum to Applications. The binary is universal, so one download runs on both Intel and Apple Silicon. It is unsigned, so the first launch needs a Control-click then Open.
+Download `NumNum-<version>-macos.dmg`, open it, and drag NumNum to Applications. The binary is universal, so one download runs on both Intel and Apple Silicon.
+
+NumNum is not signed with an Apple Developer ID, and macOS Sequoia (15) and later removed the old Control-click bypass. First launch: double-click NumNum, dismiss the warning, then open **System Settings -> Privacy & Security**, scroll to the bottom and click **Open Anyway** next to the NumNum entry. You only do this once.
+
+If you prefer the terminal, strip the quarantine attribute and the app opens normally:
+
+```sh
+xattr -d com.apple.quarantine /Applications/NumNum.app
+```
 
 ### Windows
 
 Download `NumNum-<version>-windows-x86_64.exe` and run it. It installs to Program Files with a Start Menu shortcut and an uninstaller. A portable `NumNum-<version>-windows-x86_64.zip` is also attached if you would rather not install.
+
+The installer is unsigned, so on first launch Windows Defender SmartScreen shows **Windows protected your PC**. Click **More info** then **Run anyway**. You can also unblock the file in PowerShell before running it:
+
+```powershell
+Unblock-File .\NumNum-*-windows-x86_64.exe
+```
+
+If you have **Smart App Control** turned on (off by default on most systems, enabled only on some clean Windows 11 installs), it has no per-app override; you would have to disable it system-wide to install.
 
 ### FreeBSD
 
